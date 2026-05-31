@@ -1,0 +1,26 @@
+User-agent: *
+Allow: /
+
+# Allow all search engines to crawl the site
+Allow: /blog.html
+Allow: /sitemap.xml
+Allow: /india/
+Allow: /usa/
+Allow: /brands/
+Allow: /salons/
+
+# Block admin areas and API endpoints from crawling
+Disallow: /admin/
+Disallow: /api/
+Disallow: /owner/
+Disallow: /auth/
+Disallow: /_next/
+Disallow: /node_modules/
+Disallow: /.env
+Disallow: /server/
+
+# Sitemap location
+Sitemap: https://sanwarhub.in/sitemap.xml
+
+# Crawl-delay for polite crawling
+Crawl-delay: 1

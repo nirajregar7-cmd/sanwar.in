@@ -1,0 +1,267 @@
+import React, { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Camera, Save, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { LocalUploader } from "@/components/LocalUploader";
+
+interface CustomerProfileFormData {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  profileImageUrl: string;
+}
+
+interface UserProfile {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string | null;
+  phone: string | null;
+  profileImageUrl: string | null;
+  userType: string;
+}
+
+export default function CustomerProfile() {
+  const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState<CustomerProfileFormData>({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    profileImageUrl: ''
+  });
+
+  // Fetch user profile data
+  const { data: profile, isLoading } = useQuery<UserProfile>({
+    queryKey: ["/api/customer/profile"],
+    enabled: isAuthenticated,
+  });
+
+  // Update form data when profile loads
+  React.useEffect(() => {
+    if (profile) {
+      setFormData({
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
+        phone: profile.phone || '',
+        profileImageUrl: profile.profileImageUrl || ''
+      });
+    }
+  }, [profile]);
+
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: Partial<CustomerProfileFormData>) => {
+      return apiRequest("PUT", "/api/customer/profile", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customer/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      setIsEditing(false);
+      toast({ title: "Profile updated successfully!" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to update profile", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Handle profile picture upload via local storage
+  const handleProfileUpload = async (url: string) => {
+    await updateProfileMutation.mutateAsync({
+      firstName: formData.firstName || profile?.firstName || '',
+      lastName: formData.lastName || profile?.lastName || '',
+      phone: formData.phone || profile?.phone || '',
+      profileImageUrl: url
+    });
+    setFormData(prev => ({
+      ...prev,
+      profileImageUrl: url
+    }));
+  };
+
+  const handleSave = () => {
+    const profileData = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      phone: formData.phone,
+    };
+
+    updateProfileMutation.mutate(profileData);
+  };
+
+  const handleCancel = () => {
+    if (profile) {
+      setFormData({
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
+        phone: profile.phone || '',
+        profileImageUrl: profile.profileImageUrl || ''
+      });
+    }
+    setIsEditing(false);
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <User className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">Customer Profile</h2>
+          <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base mb-6">Please log in to access your profile</p>
+          <Button asChild className="w-full sm:w-auto">
+            <a href="/api/login">Log In</a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 sm:h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/3 sm:w-1/4"></div>
+            <div className="h-48 sm:h-64 bg-gray-300 dark:bg-gray-700 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">My Profile</h1>
+          <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">Manage your profile information and photo</p>
+        </div>
+
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+            <CardTitle className="dark:text-white">Profile Information</CardTitle>
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+              {isEditing ? (
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleCancel}
+                    disabled={updateProfileMutation.isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleSave}
+                    disabled={updateProfileMutation.isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </Button>
+                </>
+              ) : (
+                <Button onClick={() => setIsEditing(true)} className="w-full sm:w-auto">
+                  Edit Profile
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6 p-4 sm:p-6">
+            {/* Profile Picture Section */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6">
+              <div className="relative">
+                <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
+                  <AvatarImage src={formData.profileImageUrl || profile?.profileImageUrl || undefined} />
+                  <AvatarFallback className="text-lg sm:text-xl">
+                    {(formData.firstName || profile?.firstName || 'U')[0].toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                {isEditing && (
+                  <div className="absolute -bottom-2 -right-2">
+                    <LocalUploader
+                      maxFileSize={5 * 1024 * 1024}
+                      accept="image/*"
+                      onUpload={handleProfileUpload}
+                      className="h-8 w-8"
+                    >
+                      <Camera className="h-4 w-4" />
+                    </LocalUploader>
+                  </div>
+                )}
+              </div>
+              <div className="text-center sm:text-left">
+                <h3 className="text-lg font-medium dark:text-white">Profile Picture</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {isEditing ? "Click the camera icon to upload a new photo" : "Your profile photo"}
+                </p>
+              </div>
+            </div>
+
+            {/* Profile Form */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="firstName" className="dark:text-gray-300">First Name</Label>
+                <Input
+                  id="firstName"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                  disabled={!isEditing}
+                  placeholder="Enter your first name"
+                  className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lastName" className="dark:text-gray-300">Last Name</Label>
+                <Input
+                  id="lastName"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                  disabled={!isEditing}
+                  placeholder="Enter your last name"
+                  className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email" className="dark:text-gray-300">Email</Label>
+                <Input
+                  id="email"
+                  value={profile?.email || user?.email || ''}
+                  disabled={true}
+                  className="bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">Email cannot be changed</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="dark:text-gray-300">Phone Number</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  disabled={!isEditing}
+                  placeholder="Enter your phone number"
+                  className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

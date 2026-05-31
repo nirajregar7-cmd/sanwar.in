@@ -1,0 +1,432 @@
+import { sql, relations } from "drizzle-orm";
+import {
+  pgTable,
+  varchar,
+  text,
+  timestamp,
+  decimal,
+  integer,
+  boolean,
+  jsonb,
+  index,
+} from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// Session storage table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)]
+);
+
+// Users table for Replit Auth
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  userType: varchar("user_type", { enum: ["customer", "salon_owner"] }).notNull().default("customer"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Salons table
+export const salons = pgTable("salons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  phone: varchar("phone", { length: 20 }),
+  address: text("address").notNull(),
+  imageUrl: varchar("image_url"),
+  // Location fields for map integration
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  // Rating fields
+  averageRating: decimal("average_rating", { precision: 3, scale: 2 }).default("0"),
+  totalReviews: integer("total_reviews").default(0),
+  // Business settings
+  confirmationAmount: integer("confirmation_amount").default(0), // in paise (₹20 = 2000 paise)
+  monthlyFee: integer("monthly_fee").default(10000), // ₹100 in paise
+  isActive: boolean("is_active").default(true),
+  isPremium: boolean("is_premium").default(false), // for premium features
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Services table
+export const services = pgTable("services", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  salonId: varchar("salon_id").references(() => salons.id, { onDelete: "cascade" }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  duration: integer("duration").notNull(), // in minutes
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Working hours table
+export const workingHours = pgTable("working_hours", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  salonId: varchar("salon_id").references(() => salons.id, { onDelete: "cascade" }).notNull(),
+  dayOfWeek: integer("day_of_week").notNull(), // 0 = Sunday, 1 = Monday, etc.
+  isOpen: boolean("is_open").default(true),
+  openTime: varchar("open_time", { length: 5 }), // HH:MM format
+  closeTime: varchar("close_time", { length: 5 }), // HH:MM format
+  breakStartTime: varchar("break_start_time", { length: 5 }),
+  breakEndTime: varchar("break_end_time", { length: 5 }),
+});
+
+// Time slots table
+export const timeSlots = pgTable("time_slots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  salonId: varchar("salon_id").references(() => salons.id, { onDelete: "cascade" }).notNull(),
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD format
+  startTime: varchar("start_time", { length: 5 }).notNull(), // HH:MM format
+  endTime: varchar("end_time", { length: 5 }).notNull(), // HH:MM format
+  isAvailable: boolean("is_available").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Bookings table
+export const bookings = pgTable("bookings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerId: varchar("customer_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  salonId: varchar("salon_id").references(() => salons.id, { onDelete: "cascade" }).notNull(),
+  serviceId: varchar("service_id").references(() => services.id, { onDelete: "cascade" }).notNull(),
+  timeSlotId: varchar("time_slot_id").references(() => timeSlots.id, { onDelete: "cascade" }).notNull(),
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD format
+  startTime: varchar("start_time", { length: 5 }).notNull(), // HH:MM format
+  endTime: varchar("end_time", { length: 5 }).notNull(), // HH:MM format
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status", { enum: ["pending", "confirmed", "completed", "cancelled"] }).default("pending"),
+  paymentId: varchar("payment_id"),
+  paymentStatus: varchar("payment_status", { enum: ["pending", "completed", "failed"] }).default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Reviews table
+export const reviews = pgTable("reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerId: varchar("customer_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  salonId: varchar("salon_id").references(() => salons.id, { onDelete: "cascade" }).notNull(),
+  bookingId: varchar("booking_id").references(() => bookings.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(), // 1-5
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Staff table
+export const staff = pgTable("staff", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  salonId: varchar("salon_id").references(() => salons.id, { onDelete: "cascade" }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  role: varchar("role", { length: 100 }).notNull(),
+  photoUrl: varchar("photo_url"),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email"),
+  rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
+  totalReviews: integer("total_reviews").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Platform statistics table
+export const platformStats = pgTable("platform_stats", {
+  id: varchar("id").primaryKey().default("stats"),
+  totalCustomers: integer("total_customers").default(0),
+  totalSalons: integer("total_salons").default(0),
+  totalBookings: integer("total_bookings").default(0),
+  totalServices: integer("total_services").default(0),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+});
+
+// Wallets table for customer credits/referrals
+export const wallets = pgTable("wallets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerId: varchar("customer_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  balance: decimal("balance", { precision: 10, scale: 2 }).default("0"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Wallet transactions table
+export const walletTransactions = pgTable("wallet_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletId: varchar("wallet_id").references(() => wallets.id, { onDelete: "cascade" }).notNull(),
+  type: varchar("type", { enum: ["credit", "debit"] }).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  description: text("description").notNull(),
+  referenceId: varchar("reference_id"), // booking_id, referral_id, etc.
+  referenceType: varchar("reference_type", { enum: ["booking", "referral", "admin"] }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Referrals table
+export const referrals = pgTable("referrals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referrerId: varchar("referrer_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  referredId: varchar("referred_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  referralCode: varchar("referral_code", { length: 10 }).notNull().unique(),
+  status: varchar("status", { enum: ["pending", "completed", "expired"] }).default("pending"),
+  rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }).default("50"), // ₹50 default
+  isRewardClaimed: boolean("is_reward_claimed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// Relations
+export const usersRelations = relations(users, ({ many, one }) => ({
+  ownedSalons: many(salons, { relationName: "salon_owner" }),
+  bookings: many(bookings, { relationName: "customer_bookings" }),
+  reviews: many(reviews, { relationName: "customer_reviews" }),
+}));
+
+export const salonsRelations = relations(salons, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [salons.ownerId],
+    references: [users.id],
+    relationName: "salon_owner",
+  }),
+  services: many(services),
+  workingHours: many(workingHours),
+  timeSlots: many(timeSlots),
+  bookings: many(bookings),
+  reviews: many(reviews),
+}));
+
+export const servicesRelations = relations(services, ({ one, many }) => ({
+  salon: one(salons, {
+    fields: [services.salonId],
+    references: [salons.id],
+  }),
+  bookings: many(bookings),
+}));
+
+export const workingHoursRelations = relations(workingHours, ({ one }) => ({
+  salon: one(salons, {
+    fields: [workingHours.salonId],
+    references: [salons.id],
+  }),
+}));
+
+export const timeSlotsRelations = relations(timeSlots, ({ one, many }) => ({
+  salon: one(salons, {
+    fields: [timeSlots.salonId],
+    references: [salons.id],
+  }),
+  bookings: many(bookings),
+}));
+
+export const bookingsRelations = relations(bookings, ({ one, many }) => ({
+  customer: one(users, {
+    fields: [bookings.customerId],
+    references: [users.id],
+    relationName: "customer_bookings",
+  }),
+  salon: one(salons, {
+    fields: [bookings.salonId],
+    references: [salons.id],
+  }),
+  service: one(services, {
+    fields: [bookings.serviceId],
+    references: [services.id],
+  }),
+  timeSlot: one(timeSlots, {
+    fields: [bookings.timeSlotId],
+    references: [timeSlots.id],
+  }),
+  reviews: many(reviews),
+}));
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+  customer: one(users, {
+    fields: [reviews.customerId],
+    references: [users.id],
+    relationName: "customer_reviews",
+  }),
+  salon: one(salons, {
+    fields: [reviews.salonId],
+    references: [salons.id],
+  }),
+  booking: one(bookings, {
+    fields: [reviews.bookingId],
+    references: [bookings.id],
+  }),
+}));
+
+// Insert schemas
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const upsertUserSchema = createInsertSchema(users).pick({
+  id: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  profileImageUrl: true,
+  userType: true,
+});
+
+export const insertSalonSchema = createInsertSchema(salons).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertServiceSchema = createInsertSchema(services).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWorkingHoursSchema = createInsertSchema(workingHours).omit({
+  id: true,
+});
+
+export const insertTimeSlotSchema = createInsertSchema(timeSlots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertBookingSchema = createInsertSchema(bookings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertReviewSchema = createInsertSchema(reviews).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Customer wallets for referral credits (duplicate removed above)
+
+// Wallet transactions for audit trail
+export const walletTransactions = pgTable("wallet_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletId: varchar("wallet_id").references(() => wallets.id, { onDelete: "cascade" }).notNull(),
+  type: varchar("type", { enum: ["credit", "debit"] }).notNull(),
+  amount: integer("amount").notNull(), // in paise
+  description: text("description"),
+  referenceId: varchar("reference_id"), // booking ID or referral ID
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Referrals table for tracking referral program
+export const referrals = pgTable("referrals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referrerId: varchar("referrer_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  refereeId: varchar("referee_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  creditAmount: integer("credit_amount").default(5000), // ₹50 in paise
+  isRewardClaimed: boolean("is_reward_claimed").default(false),
+  firstBookingId: varchar("first_booking_id"), // when referee makes first booking
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Platform statistics for landing page
+export const platformStats = pgTable("platform_stats", {
+  id: varchar("id").primaryKey().default("stats"),
+  totalCustomers: integer("total_customers").default(0),
+  totalSalons: integer("total_salons").default(0),
+  totalBookings: integer("total_bookings").default(0),
+  totalServices: integer("total_services").default(0),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+});
+
+// Additional insert schemas for new tables
+export const insertStaffSchema = createInsertSchema(staff).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWalletSchema = createInsertSchema(wallets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWalletTransactionSchema = createInsertSchema(walletTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertReferralSchema = createInsertSchema(referrals).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Additional relations for new tables
+export const staffRelations = relations(staff, ({ one }) => ({
+  salon: one(salons, {
+    fields: [staff.salonId],
+    references: [salons.id],
+  }),
+}));
+
+export const walletsRelations = relations(wallets, ({ one, many }) => ({
+  customer: one(users, {
+    fields: [wallets.customerId],
+    references: [users.id],
+  }),
+  transactions: many(walletTransactions),
+}));
+
+export const walletTransactionsRelations = relations(walletTransactions, ({ one }) => ({
+  wallet: one(wallets, {
+    fields: [walletTransactions.walletId],
+    references: [wallets.id],
+  }),
+}));
+
+export const referralsRelations = relations(referrals, ({ one }) => ({
+  referrer: one(users, {
+    fields: [referrals.referrerId],
+    references: [users.id],
+    relationName: "user_referrals_given",
+  }),
+  referee: one(users, {
+    fields: [referrals.refereeId],
+    references: [users.id],
+    relationName: "user_referrals_received",
+  }),
+}));
+
+// Types
+export type User = typeof users.$inferSelect;
+export type UpsertUser = z.infer<typeof upsertUserSchema>;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type Salon = typeof salons.$inferSelect;
+export type InsertSalon = z.infer<typeof insertSalonSchema>;
+export type Service = typeof services.$inferSelect;
+export type InsertService = z.infer<typeof insertServiceSchema>;
+export type WorkingHours = typeof workingHours.$inferSelect;
+export type InsertWorkingHours = z.infer<typeof insertWorkingHoursSchema>;
+export type TimeSlot = typeof timeSlots.$inferSelect;
+export type InsertTimeSlot = z.infer<typeof insertTimeSlotSchema>;
+export type Booking = typeof bookings.$inferSelect;
+export type InsertBooking = z.infer<typeof insertBookingSchema>;
+export type Review = typeof reviews.$inferSelect;
+export type InsertReview = z.infer<typeof insertReviewSchema>;
+export type Staff = typeof staff.$inferSelect;
+export type InsertStaff = z.infer<typeof insertStaffSchema>;
+export type Wallet = typeof wallets.$inferSelect;
+export type InsertWallet = z.infer<typeof insertWalletSchema>;
+export type WalletTransaction = typeof walletTransactions.$inferSelect;
+export type InsertWalletTransaction = z.infer<typeof insertWalletTransactionSchema>;
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = z.infer<typeof insertReferralSchema>;
+export type PlatformStats = typeof platformStats.$inferSelect;
