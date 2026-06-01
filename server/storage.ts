@@ -228,6 +228,7 @@ export interface IStorage {
   // Password reset OTP operations
   createPasswordResetOtp(otp: InsertPasswordResetOtp): Promise<PasswordResetOtp>;
   getValidPasswordResetOtp(phone: string, otp: string): Promise<PasswordResetOtp | undefined>;
+  getValidPasswordResetOtpByEmail(email: string, otp: string): Promise<PasswordResetOtp | undefined>;
   markPasswordResetOtpUsed(id: string): Promise<void>;
   updateUserPassword(email: string, hashedPassword: string): Promise<User | undefined>;
 
@@ -1936,6 +1937,23 @@ export class DatabaseStorage implements IStorage {
           gte(passwordResetOtps.expiresAt, new Date())
         )
       );
+    return otpRecord;
+  }
+
+  async getValidPasswordResetOtpByEmail(email: string, otp: string): Promise<PasswordResetOtp | undefined> {
+    const [otpRecord] = await db
+      .select()
+      .from(passwordResetOtps)
+      .where(
+        and(
+          eq(passwordResetOtps.email, email),
+          eq(passwordResetOtps.otp, otp),
+          eq(passwordResetOtps.isUsed, false),
+          gte(passwordResetOtps.expiresAt, new Date())
+        )
+      )
+      .orderBy(passwordResetOtps.createdAt)
+      .limit(1);
     return otpRecord;
   }
 

@@ -247,38 +247,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Step 1: Request OTP for password reset
   app.post('/api/auth/forgot-password', async (req, res) => {
     try {
-      const { phone, email } = req.body;
+      const { email } = req.body;
       
-      if (!phone || !email) {
-        return res.status(400).json({ message: "Phone and email are required" });
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
       }
 
-      // Check if user exists with this email and phone combination
-      const user = await storage.findUserForPasswordReset(email, phone);
+      // Check if user exists with this email
+      const user = await storage.getUserByEmail(email);
       if (!user) {
-        return res.status(404).json({ message: "No account found with this email and phone combination" });
+        // Return success even if user not found (security: don't reveal if email exists)
+        return res.json({ message: "If an account with that email exists, you will receive a reset code shortly." });
       }
 
-      // Generate OTP
+      // Generate 6-digit OTP
       const otp = generateOTP();
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-      // Save OTP to database
+      // Save OTP to database (use email as phone field since it's NOT NULL)
       await storage.createPasswordResetOtp({
-        phone,
+        phone: email,
         email,
         otp,
         expiresAt,
       });
 
-      // Send OTP via WhatsApp
-      const success = await sendPasswordResetOTP(phone, otp);
-      
-      if (!success) {
-        return res.status(500).json({ message: "Failed to send OTP. Please try again." });
+      // Send OTP via email
+      const { sendEmail } = await import('./emailService');
+      const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><style>
+          body { font-family: Arial, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
+          .container { max-width: 480px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px; text-align: center; }
+          .header h1 { color: white; margin: 0; font-size: 24px; }
+          .body { padding: 32px; }
+          .otp-box { background: #f0f4ff; border: 2px dashed #667eea; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0; }
+          .otp-code { font-size: 42px; font-weight: 900; letter-spacing: 10px; color: #667eea; font-family: monospace; }
+          .note { color: #888; font-size: 13px; margin-top: 8px; }
+          .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #aaa; font-size: 12px; }
+        </style></head>
+        <body>
+          <div class="container">
+            <div class="header"><h1>✂️ Sanwar Password Reset</h1></div>
+            <div class="body">
+              <p>Hi ${user.firstName || 'there'},</p>
+              <p>We received a request to reset your Sanwar account password. Use the code below to complete the reset:</p>
+              <div class="otp-box">
+                <div class="otp-code">${otp}</div>
+                <div class="note">This code expires in 15 minutes</div>
+              </div>
+              <p>Enter this code on the password reset page to create a new password.</p>
+              <p>If you didn't request this, you can safely ignore this email — your password won't change.</p>
+            </div>
+            <div class="footer">© Sanwar · Smart Salon Booking · sanwarhub.in</div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const emailSent = await sendEmail({
+        to: email,
+        subject: 'Your Sanwar Password Reset Code',
+        html: emailHtml,
+      });
+
+      if (!emailSent) {
+        console.warn(`Password reset email could not be sent to ${email}, but OTP stored in DB.`);
       }
 
-      res.json({ message: "OTP sent to your WhatsApp number" });
+      res.json({ message: "If an account with that email exists, you will receive a reset code shortly." });
     } catch (error) {
       console.error("Forgot password error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -288,20 +327,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Step 2: Verify OTP and reset password
   app.post('/api/auth/reset-password', async (req, res) => {
     try {
-      const { phone, email, otp, newPassword } = req.body;
+      const { email, otp, newPassword } = req.body;
       
-      if (!phone || !email || !otp || !newPassword) {
-        return res.status(400).json({ message: "All fields are required" });
+      if (!email || !otp || !newPassword) {
+        return res.status(400).json({ message: "Email, OTP, and new password are required" });
       }
 
       if (newPassword.length < 6) {
         return res.status(400).json({ message: "Password must be at least 6 characters long" });
       }
 
-      // Verify OTP
-      const otpRecord = await storage.getValidPasswordResetOtp(phone, otp);
-      if (!otpRecord || otpRecord.email !== email) {
-        return res.status(400).json({ message: "Invalid or expired OTP" });
+      // Verify OTP by email
+      const otpRecord = await storage.getValidPasswordResetOtpByEmail(email, otp);
+      if (!otpRecord) {
+        return res.status(400).json({ message: "Invalid or expired code. Please request a new one." });
       }
 
       // Hash new password
@@ -316,7 +355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Mark OTP as used
       await storage.markPasswordResetOtpUsed(otpRecord.id);
 
-      res.json({ message: "Password reset successful" });
+      res.json({ message: "Password reset successful! You can now log in with your new password." });
     } catch (error) {
       console.error("Reset password error:", error);
       res.status(500).json({ message: "Internal server error" });

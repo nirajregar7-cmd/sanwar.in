@@ -4,238 +4,269 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, ArrowLeft, CheckCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle, Mail, KeyRound } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 
 export default function ForgotPasswordPage() {
-  const [step, setStep] = useState<"request" | "verify">("request");
+  const [step, setStep] = useState<"request" | "verify" | "done">("request");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [location, navigate] = useLocation();
+  const [showPassword, setShowPassword] = useState(false);
+  const [, navigate] = useLocation();
 
-  // Request OTP mutation
-  const requestOtpMutation = useMutation({
-    mutationFn: async (data: { email: string; phone: string }) => {
-      const response = await apiRequest("POST", "/api/auth/forgot-password", data);
-      return response.json();
+  const requestMutation = useMutation({
+    mutationFn: async (data: { email: string }) => {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      let json: any = {};
+      try { json = await res.json(); } catch {}
+      if (!res.ok) throw new Error(json.message || "Failed to send reset code");
+      return json;
+    },
+    onSuccess: () => setStep("verify"),
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: async (data: { email: string; otp: string; newPassword: string }) => {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      let json: any = {};
+      try { json = await res.json(); } catch {}
+      if (!res.ok) throw new Error(json.message || "Failed to reset password");
+      return json;
     },
     onSuccess: () => {
-      setStep("verify");
+      setStep("done");
+      setTimeout(() => navigate("/auth"), 3000);
     },
   });
 
-  // Reset password mutation
-  const resetPasswordMutation = useMutation({
-    mutationFn: async (data: { phone: string; email: string; otp: string; newPassword: string }) => {
-      const response = await apiRequest("POST", "/api/auth/reset-password", data);
-      return response.json();
-    },
-    onSuccess: () => {
-      // Reset successful, navigate to auth page
-      setTimeout(() => navigate("/auth"), 2000);
-    },
-  });
-
-  const handleRequestOtp = (e: React.FormEvent) => {
+  const handleRequestCode = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !phone) return;
-    requestOtpMutation.mutate({ email, phone });
+    if (!email) return;
+    requestMutation.mutate({ email });
   };
 
-  const handleResetPassword = (e: React.FormEvent) => {
+  const handleReset = (e: React.FormEvent) => {
     e.preventDefault();
     if (!otp || !newPassword || !confirmPassword) return;
-    
-    if (newPassword !== confirmPassword) {
-      return;
-    }
-    
-    if (newPassword.length < 6) {
-      return;
-    }
-
-    resetPasswordMutation.mutate({
-      phone,
-      email,
-      otp,
-      newPassword
-    });
+    if (newPassword !== confirmPassword) return;
+    if (newPassword.length < 6) return;
+    resetMutation.mutate({ email, otp, newPassword });
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 py-12">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center gap-2">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-200 via-blue-100 to-slate-300 px-4 py-12">
+      <Card className="w-full max-w-md shadow-2xl border-0 rounded-3xl bg-white/95 backdrop-blur-sm">
+        <CardHeader className="space-y-1 pb-2">
+          <div className="flex items-center gap-2 mb-1">
             <Link href="/auth">
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
-            <CardTitle className="text-2xl">
-              {step === "request" ? "Forgot Password" : "Reset Password"}
+            <CardTitle className="text-xl font-bold">
+              {step === "request" ? "Forgot Password" : step === "verify" ? "Enter Reset Code" : "Password Reset"}
             </CardTitle>
           </div>
-          <CardDescription>
-            {step === "request" 
-              ? "Enter your email and phone number to receive an OTP on WhatsApp"
-              : "Enter the OTP sent to your WhatsApp and create a new password"
-            }
+          <CardDescription className="text-sm text-gray-500 pl-10">
+            {step === "request" && "Enter your email to receive a 6-digit reset code"}
+            {step === "verify" && `We sent a 6-digit code to ${email}`}
+            {step === "done" && "Your password has been reset successfully"}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {step === "request" ? (
-            <form onSubmit={handleRequestOtp} className="space-y-4">
+
+        <CardContent className="space-y-4 pt-2">
+          {/* Step 1 — Request code */}
+          {step === "request" && (
+            <form onSubmit={handleRequestCode} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+                <Label htmlFor="email" className="font-medium">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your registered email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 h-11 rounded-xl"
+                    required
+                    data-testid="input-forgot-email"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="Enter your phone number"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                />
-              </div>
-              
-              {requestOtpMutation.error && (
-                <Alert variant="destructive">
+
+              {requestMutation.isError && (
+                <Alert variant="destructive" className="rounded-xl">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    {(requestOtpMutation.error as any)?.message || "Failed to send OTP"}
-                  </AlertDescription>
+                  <AlertDescription>{(requestMutation.error as any)?.message}</AlertDescription>
                 </Alert>
               )}
 
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={requestOtpMutation.isPending || !email || !phone}
+              <Button
+                type="submit"
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 font-semibold"
+                disabled={requestMutation.isPending || !email}
+                data-testid="button-send-reset-code"
               >
-                {requestOtpMutation.isPending ? "Sending OTP..." : "Send OTP"}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="otp">OTP from WhatsApp</Label>
-                <Input
-                  id="otp"
-                  type="text"
-                  placeholder="Enter 6-digit OTP"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  maxLength={6}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  placeholder="Enter new password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Confirm new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Passwords do not match
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {newPassword && newPassword.length < 6 && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Password must be at least 6 characters long
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {resetPasswordMutation.error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    {(resetPasswordMutation.error as any)?.message || "Failed to reset password"}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {resetPasswordMutation.isSuccess && (
-                <Alert>
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Password reset successful! Redirecting to login...
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={
-                  resetPasswordMutation.isPending || 
-                  !otp || 
-                  !newPassword || 
-                  !confirmPassword || 
-                  newPassword !== confirmPassword ||
-                  newPassword.length < 6
-                }
-              >
-                {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
-              </Button>
-
-              <Button 
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => setStep("request")}
-                disabled={resetPasswordMutation.isPending}
-              >
-                Send New OTP
+                {requestMutation.isPending ? "Sending..." : "Send Reset Code"}
               </Button>
             </form>
           )}
 
-          <div className="text-center">
-            <Link href="/auth" className="text-sm text-muted-foreground hover:text-primary">
-              Back to Login
-            </Link>
-          </div>
+          {/* Step 2 — Enter code + new password */}
+          {step === "verify" && (
+            <form onSubmit={handleReset} className="space-y-4">
+              <Alert className="rounded-xl border-blue-200 bg-blue-50">
+                <Mail className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-700 text-sm">
+                  Check your inbox at <strong>{email}</strong> for the 6-digit code. It expires in 15 minutes.
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-2">
+                <Label htmlFor="otp" className="font-medium">6-Digit Reset Code</Label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="otp"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Enter code from email"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className="pl-10 h-11 rounded-xl text-center tracking-widest text-lg font-mono"
+                    maxLength={6}
+                    required
+                    data-testid="input-reset-otp"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="newPassword" className="font-medium">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="At least 6 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="h-11 rounded-xl"
+                  required
+                  data-testid="input-new-password"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="font-medium">Confirm New Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Re-enter your new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="h-11 rounded-xl"
+                  required
+                  data-testid="input-confirm-password"
+                />
+              </div>
+
+              <button
+                type="button"
+                className="text-xs text-gray-500 hover:text-gray-700"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? "Hide" : "Show"} passwords
+              </button>
+
+              {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                <Alert variant="destructive" className="rounded-xl">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>Passwords do not match</AlertDescription>
+                </Alert>
+              )}
+
+              {newPassword && newPassword.length < 6 && (
+                <Alert variant="destructive" className="rounded-xl">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>Password must be at least 6 characters</AlertDescription>
+                </Alert>
+              )}
+
+              {resetMutation.isError && (
+                <Alert variant="destructive" className="rounded-xl">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{(resetMutation.error as any)?.message}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 font-semibold"
+                disabled={
+                  resetMutation.isPending ||
+                  otp.length !== 6 ||
+                  !newPassword ||
+                  !confirmPassword ||
+                  newPassword !== confirmPassword ||
+                  newPassword.length < 6
+                }
+                data-testid="button-reset-password"
+              >
+                {resetMutation.isPending ? "Resetting..." : "Reset Password"}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-11 rounded-xl"
+                onClick={() => { setStep("request"); requestMutation.reset(); }}
+              >
+                Resend Code
+              </Button>
+            </form>
+          )}
+
+          {/* Step 3 — Done */}
+          {step === "done" && (
+            <div className="text-center space-y-4 py-6">
+              <div className="flex justify-center">
+                <div className="bg-green-100 rounded-full p-4">
+                  <CheckCircle className="h-12 w-12 text-green-600" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Password Updated!</h3>
+              <p className="text-gray-500 text-sm">
+                Your password has been reset successfully. Redirecting you to login...
+              </p>
+              <Button
+                onClick={() => navigate("/auth")}
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 font-semibold"
+              >
+                Go to Login
+              </Button>
+            </div>
+          )}
+
+          {step !== "done" && (
+            <div className="text-center pt-2">
+              <Link href="/auth" className="text-sm text-gray-500 hover:text-purple-600 transition-colors">
+                Back to Login
+              </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
