@@ -18,7 +18,7 @@ import {
 import { db } from "./db";
 import { platformStats } from "@shared/schema";
 import { ObjectPermission } from "./objectAcl";
-import { insertSalonSchema, insertServiceSchema, insertWorkingHoursSchema, insertTimeSlotSchema, insertBookingSchema, insertWalkInBookingSchema, insertReviewSchema, insertPasswordResetOtpSchema, insertEmailVerificationOtpSchema, insertFeedbackSchema, insertHelpTicketSchema, insertHelpTicketMessageSchema, insertSalonFacilitySchema, insertSalonProductSchema, insertEmergencyWaitlistSchema, insertSalonEmergencyConfigSchema, insertEmergencySlotSchema, insertSalonOfferSchema, insertSalonOfferUsageSchema, insertProfileVisitSchema, insertSalonOwnerOtpSchema, insertPaymentOrderSchema, insertUpcomingFeatureVideoSchema, salons, users, bookings, services, serviceCategories, staff, reviews, workingHours, timeSlots, salonOwnerAccounts, revenueShares, notificationSettings, notificationHistory, pushSubscriptions, referrals, referralMilestones, freeBookingCredits, feedback, helpTickets, helpTicketMessages, salonFacilities, salonProducts, brandOffers, offerUsages, brandMessages, emailVerificationOtps, staffServices, staffWorkingHours, salonOffers, salonOfferUsage, profileVisits, salonMedia, salonOwnerOtps, staffOtps, paymentOrders, faqs, sanwarDiscountCards, upcomingFeatureVideos, salonChats, salonFollowers, staffRegistrations, staffJobOffers, customerShowcase } from "@shared/schema";
+import { insertSalonSchema, insertServiceSchema, insertWorkingHoursSchema, insertTimeSlotSchema, insertBookingSchema, insertWalkInBookingSchema, insertReviewSchema, insertPasswordResetOtpSchema, insertEmailVerificationOtpSchema, insertFeedbackSchema, insertHelpTicketSchema, insertHelpTicketMessageSchema, insertSalonFacilitySchema, insertSalonProductSchema, insertEmergencyWaitlistSchema, insertSalonEmergencyConfigSchema, insertEmergencySlotSchema, insertSalonOfferSchema, insertSalonOfferUsageSchema, insertProfileVisitSchema, insertSalonOwnerOtpSchema, insertPaymentOrderSchema, insertUpcomingFeatureVideoSchema, salons, users, bookings, services, serviceCategories, staff, reviews, workingHours, timeSlots, salonOwnerAccounts, revenueShares, notificationSettings, notificationHistory, pushSubscriptions, referrals, referralMilestones, freeBookingCredits, feedback, helpTickets, helpTicketMessages, salonFacilities, salonProducts, brandOffers, offerUsages, brandMessages, emailVerificationOtps, staffServices, staffWorkingHours, salonOffers, salonOfferUsage, profileVisits, salonMedia, salonOwnerOtps, staffOtps, paymentOrders, faqs, sanwarDiscountCards, upcomingFeatureVideos, salonChats, salonFollowers, staffRegistrations, staffJobOffers, customerShowcase, reviewReplies } from "@shared/schema";
 import { sendBookingConfirmationNotification, sendSalonOwnerBookingNotification, notifyFollowersNewOffer } from "./notifications";
 import { sendWelcomeEmail, testEmailConnection, sendDiscountCardEmail } from "./welcomeEmail";
 import { sendEmailVerificationOtp } from "./emailService";
@@ -1734,7 +1734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Calculate total amount including additional services
-      let totalServiceAmount = service.price;
+      let totalServiceAmount: string | number = service.price;
       let additionalServiceDetails = [];
       
       if (additionalServices && Array.isArray(additionalServices) && additionalServices.length > 0) {
@@ -2586,7 +2586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       setImmediate(async () => {
         try {
           const { sendBookingNotificationEmails } = await import('./booking-notifications');
-          const emailResults = await sendBookingNotificationEmails(booking.id);
+          const emailResults = await sendBookingNotificationEmails(primaryBooking?.id || createdBookings[0]?.id);
           console.log(`📧 Booking emails sent - Customer: ${emailResults.customerSent}, Shopkeeper: ${emailResults.shopkeeperSent}`);
         } catch (emailError) {
           console.error('❌ Error sending booking notification emails:', emailError);
@@ -2709,13 +2709,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Calculate amounts
-      const confirmationAmount = verificationResult.amount || parseFloat(service.price) * 0.05; // 5% confirmation
+      const confirmationAmount = verificationResult.paymentAmount || parseFloat(service.price) * 0.05; // 5% confirmation
       const remainingAmount = parseFloat(service.price) - confirmationAmount;
 
       // Create booking
       const [booking] = await db.insert(bookings)
         .values({
-          id: `bk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           customerId: userId,
           salonId,
           serviceId,
@@ -2735,22 +2734,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
 
       // Create revenue share record
-      const revenueShare = calculateRevenueShare(
-        confirmationAmount,
-        discountApplied || 0,
-        salon.commissionRate || 0.8
-      );
+      const revenueShare = calculateRevenueShare(confirmationAmount);
 
       await db.insert(revenueShares).values({
-        id: `rs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         bookingId: booking.id,
-        salonId: booking.salonId,
-        totalAmount: confirmationAmount,
-        salonShare: revenueShare.salonAmount,
-        platformShare: revenueShare.platformAmount,
-        commissionRate: revenueShare.commissionRate,
-        discountApplied: discountApplied || 0,
-        status: 'pending',
+        confirmationAmount: confirmationAmount.toString(),
+        salonShare: revenueShare.salonShare.toString(),
+        platformShare: revenueShare.platformShare.toString(),
+        transferStatus: 'pending',
         createdAt: new Date()
       });
 
@@ -2763,11 +2754,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (referralRecord) {
             const referrer = await storage.getUserById(referralRecord.referrerId);
             
-            if (referrer && referralRecord.referralType === "customer_first_booking" && referrer.userType === "customer") {
+            if (referrer && (referralRecord.referralType as string) === "customer_first_booking" && referrer.userType === "customer") {
               // Customer first booking referral
               await storage.addWalletTransaction(
                 referralRecord.referrerId,
-                referralRecord.rewardAmount,
+                parseFloat(referralRecord.rewardAmount ?? '0'),
                 "Referral reward for completing first booking",
                 referralRecord.id,
                 "referral"
@@ -4092,7 +4083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownerBookings = await storage.getBookingsBySalon(ownerSalon.id);
       
       console.log(`[DEBUG] Found ${ownerBookings.length} bookings for salon ${ownerSalon.id}`);
-      console.log('[DEBUG] Booking statuses:', ownerBookings.map(b => ({ id: b.id, status: b.status, serviceName: b.service?.name })));
+      console.log('[DEBUG] Booking statuses:', ownerBookings.map(b => ({ id: b.id, status: b.status, serviceId: b.serviceId })));
       
       res.json(ownerBookings);
     } catch (error) {
@@ -7747,7 +7738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { limit = 100, offset = 0, status } = req.query;
       
-      const whereConditions = status ? eq(bookings.status, status as string) : undefined;
+      const whereConditions = status ? eq(bookings.status, status as "pending" | "confirmed" | "completed" | "cancelled" | "no_show" | "owner_suggested") : undefined;
       
       const allBookings = await db
         .select({
@@ -8739,7 +8730,7 @@ Crawl-delay: 1
             ...offer,
             customerUsageCount: usage?.count || 0,
             canUse: (usage?.count || 0) < (offer.maxUsagePerCustomer || 1) &&
-                   (!offer.maxTotalUsage || offer.currentUsageCount < offer.maxTotalUsage)
+                   (!offer.maxTotalUsage || (offer.currentUsageCount ?? 0) < offer.maxTotalUsage)
           };
         })
       );
@@ -10858,7 +10849,7 @@ Crawl-delay: 1
       res.status(500).json({ 
         success: false, 
         message: 'Error resetting onboarding',
-        error: error.message 
+        error: (error as any).message 
       });
     }
   });
@@ -10936,7 +10927,7 @@ Crawl-delay: 1
       res.status(500).json({ 
         success: false, 
         message: 'Error sending test email',
-        error: error.message 
+        error: (error as any).message 
       });
     }
   });
@@ -11404,7 +11395,7 @@ Crawl-delay: 1
           ),
           gte(bookings.date, today)
         ))
-        .orderBy(asc(bookings.date), asc(bookings.time));
+        .orderBy(asc(bookings.date));
 
       res.json(staffBookings);
     } catch (error: any) {
@@ -12125,7 +12116,8 @@ Crawl-delay: 1
         return res.status(403).json({ error: "Only salon owners can send job offers" });
       }
 
-      const salon = await storage.getSalonByOwnerId(userId);
+      const ownerSalons = await storage.getSalonsByOwner(userId);
+      const salon = ownerSalons[0];
       if (!salon) return res.status(400).json({ error: "You must have a salon profile to send job offers" });
 
       const { professionalMobile, professionalName, role, message, offeredSalary } = req.body;

@@ -442,7 +442,7 @@ export async function sendSalonOwnerBookingNotification(bookingId: string) {
     }
 
     // Get customer details
-    const [customer] = await db.select().from(users).where(eq(users.id, booking.customerId));
+    const [customer] = await db.select().from(users).where(eq(users.id, booking.customerId ?? ''));
     
     if (!customer) {
       console.error(`Customer not found: ${booking.customerId}`);
@@ -468,8 +468,8 @@ export async function sendSalonOwnerBookingNotification(bookingId: string) {
       totalAmount: booking.totalAmount.toString(),
       confirmationAmount: (booking.confirmationAmount || '0').toString(),
       salonAddress: booking.salon?.address,
-      salonPhone: booking.salon?.phone,
-      status: booking.status
+      salonPhone: booking.salon?.phone ?? undefined,
+      status: booking.status ?? 'pending'
     };
 
     console.log(`📧 Sending rich booking notification email to salon owner: ${salonOwner.firstName} (${salonOwner.email})`);
@@ -541,7 +541,7 @@ export async function sendBookingConfirmationNotification(bookingId: string) {
     }
 
     // Get customer details for personalized email
-    const [customer] = await db.select().from(users).where(eq(users.id, booking.customerId));
+    const [customer] = await db.select().from(users).where(eq(users.id, booking.customerId ?? ''));
     
     // Import email service for rich HTML emails
     const { generateBookingConfirmationEmail } = await import('./emailService');
@@ -557,7 +557,7 @@ export async function sendBookingConfirmationNotification(bookingId: string) {
     );
 
     const payload: NotificationPayload = {
-      userId: booking.customerId,
+      userId: booking.customerId ?? '',
       type: 'booking_confirmation',
       title: 'Booking Confirmed! 🎉',
       message: emailHTML, // Rich HTML for email, fallback text for other channels
@@ -614,7 +614,7 @@ export async function sendBookingCancellationNotification(bookingId: string) {
     }
 
     // Get customer details for personalized email
-    const [customer] = await db.select().from(users).where(eq(users.id, booking.customerId));
+    const [customer] = await db.select().from(users).where(eq(users.id, booking.customerId ?? ''));
     
     // Import email service for rich HTML emails
     const { generateBookingCancellationEmail } = await import('./emailService');
@@ -629,7 +629,7 @@ export async function sendBookingCancellationNotification(bookingId: string) {
     );
 
     const payload: NotificationPayload = {
-      userId: booking.customerId,
+      userId: booking.customerId ?? '',
       type: 'booking_confirmation', // Using booking_confirmation type for now
       title: 'Booking Cancelled',
       message: emailHTML, // Rich HTML for email, fallback text for other channels
