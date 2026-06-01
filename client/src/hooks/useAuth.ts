@@ -21,32 +21,44 @@ export function useAuth() {
   const { data: user, isLoading, error, isError } = useQuery({
     queryKey: ["/api/auth/user"],
     queryFn: async () => {
-      const res = await fetch("/api/auth/user", {
-        credentials: "include",
-      });
-      
-      // Don't throw on 401, just return null
-      if (res.status === 401) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      try {
+        const res = await fetch("/api/auth/user", {
+          credentials: "include",
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        
+        // Don't throw on 401, just return null
+        if (res.status === 401) {
+          return null;
+        }
+        
+        if (!res.ok) {
+          return null; // treat server errors as unauthenticated, don't block UI
+        }
+        
+        return await res.json();
+      } catch (e: any) {
+        clearTimeout(timeout);
+        // Network error or timeout — treat as unauthenticated to avoid infinite spinner
+        if (e?.name === 'AbortError') {
+          console.warn("Auth check timed out, proceeding as unauthenticated");
+        }
         return null;
       }
-      
-      if (!res.ok) {
-        throw new Error(`${res.status}: ${res.statusText}`);
-      }
-      
-      return await res.json();
     },
     retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes - increased caching
+    staleTime: 5 * 60 * 1000,
     refetchInterval: false,
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // Don't refetch on mount, use cache first
-    refetchOnReconnect: true, // Only refetch on reconnect
-    gcTime: 15 * 60 * 1000, // 15 minutes cache time
+    refetchOnMount: false,
+    refetchOnReconnect: true,
+    gcTime: 15 * 60 * 1000,
     enabled: true,
   });
 
-  // If we get a 401 error, the user is not authenticated
   const isAuthenticated = !!user && !isError;
 
   const loginMutation = useMutation({
@@ -88,21 +100,15 @@ export function useAuth() {
       try {
         await apiRequest("POST", "/api/logout");
       } catch (err) {
-        // Network/fetch errors are ignored — we still log out locally
         console.warn("Logout server call failed, logging out locally:", err);
       }
     },
     onSuccess: () => {
-      // Clear the cache immediately
       queryClient.setQueryData(["/api/auth/user"], null);
-      queryClient.clear(); // Clear all cached data on logout
-      
-      // Force a hard refresh to reset everything
+      queryClient.clear();
       window.location.href = '/';
     },
-    // onError will only fire for unexpected non-network errors now
     onError: (error: Error) => {
-      // Still clear local state even on error
       queryClient.setQueryData(["/api/auth/user"], null);
       queryClient.clear();
       window.location.href = '/';

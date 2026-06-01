@@ -1,0 +1,3 @@
+- [Session store setup](session-store.md) — connect-pg-simple with createTableIfMissing:true crashes on existing IDX_session_expire index; use manual IF NOT EXISTS SQL instead.
+- [Auth hook resilience](auth-hook.md) — useAuth must have timeout + return null on errors (not throw) to prevent infinite loading spinner in Vercel cold starts.
+- [Country config init](country-config.md) — useCountryConfig must use lazy useState initializer (not useEffect) to read localStorage synchronously and avoid CountryOnboarding flash.

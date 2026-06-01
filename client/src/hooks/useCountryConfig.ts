@@ -26,27 +26,28 @@ const defaultConfig: CountryConfig = {
   defaultLanguage: "Hindi/English"
 };
 
-export function useCountryConfig() {
-  const [countryConfig, setCountryConfig] = useState<CountryConfig>(defaultConfig);
-  const [isConfigured, setIsConfigured] = useState(false);
-
-  useEffect(() => {
-    // Check if country configuration exists
+function readConfigFromStorage(): { config: CountryConfig; configured: boolean } {
+  try {
     const savedConfig = localStorage.getItem('sanwar_country_config');
     const onboardingCompleted = localStorage.getItem('sanwar_country_onboarding_completed');
-    
     if (savedConfig && onboardingCompleted) {
-      try {
-        const config = JSON.parse(savedConfig);
-        setCountryConfig(config);
-        setIsConfigured(true);
-      } catch (error) {
-        console.error('Error parsing country config:', error);
-        setIsConfigured(false);
-      }
-    } else {
-      setIsConfigured(false);
+      const config = JSON.parse(savedConfig);
+      return { config, configured: true };
     }
+  } catch {
+    // ignore parse errors
+  }
+  return { config: defaultConfig, configured: false };
+}
+
+export function useCountryConfig() {
+  const [countryConfig, setCountryConfig] = useState<CountryConfig>(() => readConfigFromStorage().config);
+  const [isConfigured, setIsConfigured] = useState<boolean>(() => readConfigFromStorage().configured);
+
+  useEffect(() => {
+    const { config, configured } = readConfigFromStorage();
+    setCountryConfig(config);
+    setIsConfigured(configured);
   }, []);
 
   const updateCountryConfig = (newConfig: CountryConfig) => {

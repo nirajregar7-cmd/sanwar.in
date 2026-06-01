@@ -83,21 +83,23 @@ export default function AuthPage() {
         const response = await fetch("/api/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             email: formData.email,
             password: formData.password,
           }),
         });
 
+        let loginData: any = {};
+        try { loginData = await response.json(); } catch {}
+
         if (response.ok) {
-          const data = await response.json();
-          console.log("Login successful:", data);
+          console.log("Login successful:", loginData);
           const redirectUrl = await getRedirectUrl();
           navigate(redirectUrl);
           window.location.reload();
         } else {
-          const data = await response.json();
-          setError(data.error || "Login failed");
+          setError(loginData.error || loginData.message || "Login failed. Please check your credentials.");
         }
       } else {
         // Register
@@ -113,6 +115,7 @@ export default function AuthPage() {
         const response = await fetch("/api/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             email: formData.email,
             password: formData.password,
@@ -124,9 +127,11 @@ export default function AuthPage() {
           }),
         });
 
+        let regData: any = {};
+        try { regData = await response.json(); } catch {}
+
         if (response.ok) {
-          const data = await response.json();
-          console.log("Registration successful:", data);
+          console.log("Registration successful:", regData);
 
           // Clear any existing onboarding status for new users
           localStorage.removeItem(`sanwar_onboarding_${userType}`);
@@ -143,13 +148,12 @@ export default function AuthPage() {
           navigate(redirectUrl);
           window.location.reload();
         } else {
-          const data = await response.json();
-          setError(data.error || "Registration failed");
+          setError(regData.error || regData.message || "Registration failed. Please try again.");
         }
       }
     } catch (error) {
       console.error("Auth error:", error);
-      setError("An error occurred. Please try again.");
+      setError("Unable to connect to the server. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }

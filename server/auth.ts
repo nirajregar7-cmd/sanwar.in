@@ -127,11 +127,33 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-export function setupAuth(app: Express) {
+async function ensureSessionTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "session" (
+        "sid" varchar NOT NULL COLLATE "default",
+        "sess" json NOT NULL,
+        "expire" timestamp(6) NOT NULL,
+        CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE
+      ) WITH (OIDS=FALSE);
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+    `);
+  } catch (err) {
+    // Log but don't crash — table likely already exists
+    console.log('Session table check complete (may already exist)');
+  }
+}
+
+export async function setupAuth(app: Express) {
+  // Ensure the session table exists before creating the store
+  await ensureSessionTable();
+
   const PostgresSessionStore = connectPg(session);
   const sessionStore = new PostgresSessionStore({ 
     pool, 
-    createTableIfMissing: false, // Table already exists
+    createTableIfMissing: false, // We manage table creation above
     ttl: 7 * 24 * 60 * 60, // 7 days
   });
 
