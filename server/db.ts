@@ -7,13 +7,16 @@ neonConfig.webSocketConstructor = ws;
 
 // NEON_DATABASE_URL takes priority — Replit overrides DATABASE_URL in production
 // with its own managed database. We use NEON_DATABASE_URL to connect to our own DB.
-const dbUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
+const rawUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
 
-if (!dbUrl) {
+if (!rawUrl) {
   throw new Error(
     "NEON_DATABASE_URL (or DATABASE_URL) must be set.",
   );
 }
+
+// Strip common copy-paste mistakes: psql 'url' or psql "url"
+const dbUrl = rawUrl.trim().replace(/^psql\s+['"]?/, '').replace(/['"]$/, '');
 
 export const pool = new Pool({ connectionString: dbUrl });
 export const db = drizzle({ client: pool, schema });
