@@ -499,8 +499,8 @@ export class SmartSchedulingService {
     if (isToday) {
       const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
       
-      return mappedSlots.filter(slot => {
-        const slotStartTime = this.timeToMinutes((slot as any).startTime);
+      return mappedSlots.filter((slot: any) => {
+        const slotStartTime = this.timeToMinutes(slot.startTime);
         return slotStartTime > currentTime; // Only return future slots for today
       });
     }

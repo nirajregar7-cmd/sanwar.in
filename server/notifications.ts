@@ -458,8 +458,8 @@ export async function sendSalonOwnerBookingNotification(bookingId: string) {
       customerName: `${customer.firstName} ${customer.lastName}` || 'Customer',
       customerEmail: customer.email || '',
       customerPhone: customer.phone || '',
-      salonOwnerName: `${salonOwner.firstName} ${salonOwner.lastName}` || 'Salon Owner',
-      salonOwnerEmail: salonOwner.email,
+      ownerName: `${salonOwner.firstName} ${salonOwner.lastName}` || 'Salon Owner',
+      ownerEmail: salonOwner.email ?? '',
       salonName: booking.salon?.name || 'Your Salon',
       serviceName: booking.service?.name || 'Service',
       date: booking.date,
@@ -682,7 +682,7 @@ export async function sendDayBeforeReminder(bookingId: string) {
     }
 
     const payload: NotificationPayload = {
-      userId: booking.customerId,
+      userId: booking.customerId!,
       type: 'day_before_reminder',
       title: 'Appointment Tomorrow 📅',
       message: `Reminder: You have an appointment at ${booking.salon?.name} tomorrow at ${booking.startTime} for ${booking.service?.name}.`,
@@ -734,7 +734,7 @@ export async function sendHourBeforeReminder(bookingId: string) {
     }
 
     const payload: NotificationPayload = {
-      userId: booking.customerId,
+      userId: booking.customerId!,
       type: 'hour_before_reminder',
       title: 'Appointment Starting Soon ⏰',
       message: `Your appointment at ${booking.salon?.name} starts in 1 hour (${booking.startTime}). Don't forget!`,
@@ -826,8 +826,8 @@ export async function notifyCustomerBookingRequested(bookingId: string) {
   const body = `Your request to ${booking.salon?.name} for ${booking.startTime} on ${booking.date} is pending confirmation.`;
 
   await Promise.all([
-    sendPushToUser(booking.customerId, { title, body, tag: `booking-${bookingId}`, data: { url: '/customer/bookings', bookingId } }),
-    logInAppNotification({ userId: booking.customerId, type: 'booking_request', title, message: body, bookingId, actionUrl: '/customer/bookings' }),
+    sendPushToUser(booking.customerId!, { title, body, tag: `booking-${bookingId}`, data: { url: '/customer/bookings', bookingId } }),
+    logInAppNotification({ userId: booking.customerId!, type: 'booking_request', title, message: body, bookingId, actionUrl: '/customer/bookings' }),
   ]);
 }
 
@@ -836,7 +836,7 @@ export async function notifyOwnerNewBooking(bookingId: string) {
   const booking = await getFullBookingDetails(bookingId);
   if (!booking || !booking.salon?.ownerId) return;
 
-  const [customer] = await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, booking.customerId));
+  const [customer] = await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, booking.customerId!));
   const customerName = customer ? `${customer.firstName || ''} ${customer.lastName || ''}`.trim() : 'Customer';
 
   const title = '📩 New Booking Request';
@@ -865,8 +865,8 @@ export async function notifyCustomerBookingAccepted(bookingId: string) {
   const body = `Your appointment at ${booking.salon?.name} is confirmed for ${booking.startTime} on ${booking.date}.`;
 
   await Promise.all([
-    sendPushToUser(booking.customerId, { title, body, tag: `booking-${bookingId}`, data: { url: '/customer/bookings', bookingId } }),
-    logInAppNotification({ userId: booking.customerId, type: 'booking_accepted', title, message: body, bookingId, actionUrl: '/customer/bookings' }),
+    sendPushToUser(booking.customerId!, { title, body, tag: `booking-${bookingId}`, data: { url: '/customer/bookings', bookingId } }),
+    logInAppNotification({ userId: booking.customerId!, type: 'booking_accepted', title, message: body, bookingId, actionUrl: '/customer/bookings' }),
   ]);
 }
 
@@ -880,8 +880,8 @@ export async function notifyCustomerBookingRejected(bookingId: string, salonName
   const body = `${name} declined your booking. Try booking a nearby salon.`;
 
   await Promise.all([
-    sendPushToUser(booking.customerId, { title, body, tag: `booking-${bookingId}`, data: { url: '/', bookingId } }),
-    logInAppNotification({ userId: booking.customerId, type: 'booking_rejected', title, message: body, bookingId, actionUrl: '/' }),
+    sendPushToUser(booking.customerId!, { title, body, tag: `booking-${bookingId}`, data: { url: '/', bookingId } }),
+    logInAppNotification({ userId: booking.customerId!, type: 'booking_rejected', title, message: body, bookingId, actionUrl: '/' }),
   ]);
 }
 
@@ -896,7 +896,7 @@ export async function notifyCustomerRescheduleSuggested(bookingId: string) {
   const body = `${booking.salon?.name} suggests ${newTime} on ${newDate} instead. Accept or choose another slot.`;
 
   await Promise.all([
-    sendPushToUser(booking.customerId, {
+    sendPushToUser(booking.customerId!, {
       title, body, tag: `booking-${bookingId}`,
       requireInteraction: true,
       data: { url: '/customer/bookings', bookingId },
@@ -905,7 +905,7 @@ export async function notifyCustomerRescheduleSuggested(bookingId: string) {
         { action: 'view', title: '🗓 Choose Another' },
       ],
     }),
-    logInAppNotification({ userId: booking.customerId, type: 'booking_rescheduled', title, message: body, bookingId, actionUrl: '/customer/bookings' }),
+    logInAppNotification({ userId: booking.customerId!, type: 'booking_rescheduled', title, message: body, bookingId, actionUrl: '/customer/bookings' }),
   ]);
 }
 
@@ -918,8 +918,8 @@ export async function notifyCustomerAutoCancel(bookingId: string) {
   const body = `${booking.salon?.name || 'The salon'} didn't respond in time. Your booking has been cancelled automatically.`;
 
   await Promise.all([
-    sendPushToUser(booking.customerId, { title, body, tag: `booking-${bookingId}`, data: { url: '/', bookingId } }),
-    logInAppNotification({ userId: booking.customerId, type: 'booking_auto_cancelled', title, message: body, bookingId, actionUrl: '/' }),
+    sendPushToUser(booking.customerId!, { title, body, tag: `booking-${bookingId}`, data: { url: '/', bookingId } }),
+    logInAppNotification({ userId: booking.customerId!, type: 'booking_auto_cancelled', title, message: body, bookingId, actionUrl: '/' }),
   ]);
 }
 
@@ -932,8 +932,8 @@ export async function notifyCustomer30MinReminder(bookingId: string) {
   const body = `Your appointment at ${booking.salon?.name} starts at ${booking.startTime}. Get ready!`;
 
   await Promise.all([
-    sendPushToUser(booking.customerId, { title, body, tag: `reminder-${bookingId}`, data: { url: '/customer/bookings', bookingId } }),
-    logInAppNotification({ userId: booking.customerId, type: 'appointment_reminder', title, message: body, bookingId, actionUrl: '/customer/bookings' }),
+    sendPushToUser(booking.customerId!, { title, body, tag: `reminder-${bookingId}`, data: { url: '/customer/bookings', bookingId } }),
+    logInAppNotification({ userId: booking.customerId!, type: 'appointment_reminder', title, message: body, bookingId, actionUrl: '/customer/bookings' }),
   ]);
 }
 

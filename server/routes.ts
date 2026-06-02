@@ -2100,7 +2100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // Create separate booking records for each service
-      const createdBookings = [];
+      const createdBookings: any[] = [];
       for (const service of serviceDetails) {
         const discountedAmount = getDiscountedPrice(service);
         const [booking] = await db.insert(bookings).values({
@@ -2378,7 +2378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const confirmationAmount = salon?.confirmationAmount || 10;
       
       // Create separate booking records for each service
-      const createdBookings = [];
+      const createdBookings: any[] = [];
       for (const service of serviceDetails) {
         const isMultipleServices = serviceIds.length > 1;
         const bookingNotes = isMultipleServices 
@@ -2715,15 +2715,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           staffId: staffId || null,
           timeSlotId,
           date,
+          startTime: timeSlot.startTime,
+          endTime: timeSlot.endTime,
           status: 'confirmed',
-          paymentStatus: 'partial',
-          totalAmount: parseFloat(service.price),
-          paidAmount: confirmationAmount,
-          remainingAmount: remainingAmount,
+          paymentStatus: 'pending',
+          totalAmount: service.price,
+          confirmationAmount: confirmationAmount.toString(),
           paymentId: paymentId,
           notes: `Cashfree payment: ${paymentId}`,
-          createdAt: new Date(),
-          paymentGateway: 'cashfree'
+          createdAt: new Date()
         })
         .returning();
 

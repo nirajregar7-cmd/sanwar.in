@@ -69,7 +69,7 @@ export async function getBookingEmailData(bookingId: string): Promise<BookingEma
       startTime: bookingData.booking.startTime,
       endTime: bookingData.booking.endTime,
       totalAmount: parseFloat(bookingData.service.price),
-      confirmationAmount: parseFloat(bookingData.booking.confirmationAmount) / 100 || 3, // Dynamic confirmation fee from booking
+      confirmationAmount: parseFloat(bookingData.booking.confirmationAmount ?? '0') / 100 || 3, // Dynamic confirmation fee from booking
       remainingAmount: parseFloat(bookingData.service.price), // Full service amount to be paid at salon (confirmation fee is separate)
     };
   } catch (error) {

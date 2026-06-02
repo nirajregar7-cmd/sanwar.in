@@ -27,11 +27,34 @@ export interface PaymentVerificationData {
   signature?: string;
 }
 
-export async function createCashfreeOrder(_data: CreateOrderData & { requestHost?: string }): Promise<never> {
+export interface CashfreeOrderResponse {
+  orderId: string;
+  paymentSessionId: string;
+  orderAmount: number;
+  orderCurrency: string;
+}
+
+export interface CashfreeVerificationResponse {
+  success: boolean;
+  error?: string;
+  orderStatus?: string;
+  customerId?: string;
+  transactionId?: string;
+  paymentAmount?: number;
+}
+
+export interface CashfreeWebhookResponse {
+  success: boolean;
+  error?: string;
+  orderStatus?: string;
+  paymentAmount?: number;
+}
+
+export async function createCashfreeOrder(_data: CreateOrderData & { requestHost?: string }): Promise<CashfreeOrderResponse> {
   throw new Error('Payment gateway not configured.');
 }
 
-export async function verifyCashfreePayment(_orderId: string) {
+export async function verifyCashfreePayment(_orderId: string): Promise<CashfreeVerificationResponse> {
   return { success: false, error: 'Payment gateway not configured.' };
 }
 
@@ -39,11 +62,11 @@ export function verifyCashfreeWebhookSignature(_rawBody: string, _signature: str
   return false;
 }
 
-export async function processWebhookData(_data: unknown) {
+export async function processWebhookData(_data: unknown): Promise<CashfreeWebhookResponse> {
   return { success: false, error: 'Payment gateway not configured.' };
 }
 
-export async function refundCashfreePayment(_orderId: string, _refundAmount?: number) {
+export async function refundCashfreePayment(_orderId: string, _refundAmount?: number): Promise<{ success: boolean; error?: string }> {
   return { success: false, error: 'Payment gateway not configured.' };
 }
 

@@ -283,7 +283,7 @@ export async function setupAuth(app: Express) {
       }
 
       // Send welcome email (async, don't block registration)
-      sendWelcomeEmail(user.email, user.firstName ?? '', user.userType as 'customer' | 'salon_owner' | 'brand_owner')
+      sendWelcomeEmail(user.email ?? '', user.firstName ?? '', user.userType as 'customer' | 'salon_owner' | 'brand_owner')
         .then(success => {
           if (success) {
             console.log(`Welcome email sent successfully to ${user.email}`);
