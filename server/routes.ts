@@ -163,9 +163,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update user type for Clerk users
-  app.put('/api/user/type', clerkIsAuthenticated, async (req: any, res) => {
+  app.put('/api/user/type', isAuthenticated, async (req: any, res) => {
     try {
-      if (!req.auth?.userId) {
+      const userId = req.user?.id;
+      if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
@@ -174,14 +175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Invalid user type' });
       }
 
-      const clerkUserId = req.auth.userId;
-      let user = await storage.getUserByClerkId(clerkUserId);
-      
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      user = await storage.updateUserType(user.id, userType);
+      const user = await storage.updateUserType(userId, userType);
       res.json(user);
     } catch (error) {
       console.error('Error updating user type:', error);
@@ -4497,22 +4491,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Emergency booking endpoints
   // Create emergency booking waitlist entry
-  app.post("/api/emergency-booking/waitlist", clerkIsAuthenticated, async (req: any, res) => {
+  app.post("/api/emergency-booking/waitlist", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.auth?.userId;
+      const userId = req.user?.id;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      // Get user from our database
-      const user = await storage.getUserByClerkId(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
       const waitlistData = insertEmergencyWaitlistSchema.parse({
         ...req.body,
-        customerId: user.id,
+        customerId: userId,
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
       });
 
@@ -4546,19 +4534,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get emergency waitlist for customer
-  app.get("/api/emergency-booking/customer", clerkIsAuthenticated, async (req: any, res) => {
+  app.get("/api/emergency-booking/customer", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.auth?.userId;
+      const userId = req.user?.id;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const user = await storage.getUserByClerkId(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const waitlist = await storage.getEmergencyWaitlistByCustomer(user.id);
+      const waitlist = await storage.getEmergencyWaitlistByCustomer(userId);
       res.json(waitlist);
     } catch (error) {
       console.error("Error fetching customer emergency waitlist:", error);
