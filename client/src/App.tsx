@@ -64,9 +64,6 @@ import AdminFeedbackSupportPage from "@/pages/admin-feedback-support";
 import BrandOwnerManagement from "@/pages/admin/brand-owner-management";
 import ImpersonatePage from "@/pages/admin/impersonate";
 
-// Clerk Auth Pages
-import ClerkSignInPage, { ClerkSignUpPage } from "@/pages/clerk-auth";
-
 // Brand Owner Pages
 import BrandDashboard from "@/pages/brand-owner/brand-dashboard";
 
@@ -126,8 +123,6 @@ function Router() {
 
 
       <Route path="/business-signup" component={AuthPage} />
-      <Route path="/clerk-signin" component={ClerkSignInPage} />
-      <Route path="/clerk-signup" component={ClerkSignUpPage} />
       <Route path="/user-type-selection" component={UserTypeSelection} />
       
       {/* Email verification page */}
