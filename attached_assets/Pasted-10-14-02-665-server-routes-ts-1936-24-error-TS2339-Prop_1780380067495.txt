@@ -1,0 +1,37 @@
+10:14:02.665 server/routes.ts(1936,24): error TS2339: Property 'orderId' does not exist on type 'never'.
+10:14:02.666 server/routes.ts(1937,33): error TS2339: Property 'paymentSessionId' does not exist on type 'never'.
+10:14:02.667 server/routes.ts(1938,28): error TS2339: Property 'orderAmount' does not exist on type 'never'.
+10:14:02.667 server/routes.ts(1939,30): error TS2339: Property 'orderCurrency' does not exist on type 'never'.
+10:14:02.667 server/routes.ts(2309,39): error TS2339: Property 'orderStatus' does not exist on type '{ success: boolean; error: string; }'.
+10:14:02.667 server/routes.ts(2315,31): error TS2339: Property 'orderStatus' does not exist on type '{ success: boolean; error: string; }'.
+10:14:02.668 server/routes.ts(2316,109): error TS2339: Property 'orderStatus' does not exist on type '{ success: boolean; error: string; }'.
+10:14:02.669 server/routes.ts(2318,74): error TS2339: Property 'orderStatus' does not exist on type '{ success: boolean; error: string; }'.
+10:14:02.669 server/routes.ts(2320,39): error TS2339: Property 'orderStatus' does not exist on type '{ success: boolean; error: string; }'.
+10:14:02.669 server/routes.ts(2326,31): error TS2339: Property 'customerId' does not exist on type '{ success: boolean; error: string; }'.
+10:14:02.669 server/routes.ts(2326,65): error TS2339: Property 'customerId' does not exist on type '{ success: boolean; error: string; }'.
+10:14:02.670 server/routes.ts(2328,50): error TS2339: Property 'customerId' does not exist on type '{ success: boolean; error: string; }'.
+10:14:02.670 server/routes.ts(2381,13): error TS7034: Variable 'createdBookings' implicitly has type 'any[]' in some locations where its type cannot be determined.
+10:14:02.670 server/routes.ts(2400,42): error TS2339: Property 'transactionId' does not exist on type '{ success: boolean; error: string; }'.
+10:14:02.672 server/routes.ts(2583,90): error TS7005: Variable 'createdBookings' implicitly has an 'any[]' type.
+10:14:02.673 server/routes.ts(2603,40): error TS2339: Property 'transactionId' does not exist on type '{ success: boolean; error: string; }'.
+10:14:02.673 server/routes.ts(2706,53): error TS2339: Property 'paymentAmount' does not exist on type '{ success: boolean; error: string; }'.
+10:14:02.673 server/routes.ts(2712,11): error TS2769: No overload matches this call.
+10:14:04.426 server/auth.ts(286,24): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+10:14:04.847 server/notifications.ts(476,56): error TS2345: Argument of type '{ bookingId: string; customerName: string; customerEmail: string; customerPhone: string; salonOwnerName: string; salonOwnerEmail: string; salonName: string; serviceName: string; date: string; ... 6 more ...; status: "pending" | ... 4 more ... | "owner_suggested"; }' is not assignable to parameter of type '{ ownerEmail: string; ownerName: string; customerName: string; serviceName: string; date: string; startTime: string; salonName: string; }'.
+10:14:04.848 server/notifications.ts(685,7): error TS2322: Type 'string | null' is not assignable to type 'string'.
+10:14:04.848 server/notifications.ts(737,7): error TS2322: Type 'string | null' is not assignable to type 'string'.
+10:14:04.848 server/notifications.ts(829,20): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+10:14:04.849 server/notifications.ts(830,28): error TS2322: Type 'string | null' is not assignable to type 'string'.
+10:14:04.849 server/notifications.ts(839,114): error TS2769: No overload matches this call.
+10:14:04.850 server/notifications.ts(868,20): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+10:14:04.851 server/notifications.ts(869,28): error TS2322: Type 'string | null' is not assignable to type 'string'.
+10:14:04.851 server/notifications.ts(883,20): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+10:14:04.851 server/notifications.ts(884,28): error TS2322: Type 'string | null' is not assignable to type 'string'.
+10:14:04.855 server/notifications.ts(899,20): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+10:14:04.859 server/notifications.ts(908,28): error TS2322: Type 'string | null' is not assignable to type 'string'.
+10:14:04.859 server/notifications.ts(921,20): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+10:14:04.859 server/notifications.ts(922,28): error TS2322: Type 'string | null' is not assignable to type 'string'.
+10:14:04.859 server/notifications.ts(935,20): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+10:14:04.859 server/notifications.ts(936,28): error TS2322: Type 'string | null' is not assignable to type 'string'.
+10:14:05.016 server/booking-notifications.ts(72,38): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+10:14:05.463 server/smart-scheduling.ts(502,33): error TS7006: Parameter 'slot' implicitly has an 'any' type.
