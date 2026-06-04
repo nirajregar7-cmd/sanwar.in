@@ -259,8 +259,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
       // Save OTP to database (use email as phone field since it's NOT NULL)
+      // Store OTP in DB. `password_reset_otps.phone` is a varchar(20)
+      // so truncate the email when using it as a phone placeholder to
+      // avoid DB errors for long emails.
+      const phonePlaceholder = typeof email === 'string' ? email.slice(0, 20) : '';
       await storage.createPasswordResetOtp({
-        phone: email,
+        phone: phonePlaceholder,
         email,
         otp,
         expiresAt,
@@ -307,11 +311,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         html: emailHtml,
       });
 
+      const sentAt = new Date().toISOString();
       if (!emailSent) {
         console.warn(`Password reset email could not be sent to ${email}, but OTP stored in DB.`);
       }
 
-      res.json({ message: "If an account with that email exists, you will receive a reset code shortly." });
+      // In development or when SHOW_OTP_IN_RESPONSE is set, include the OTP and sentAt
+      // in the JSON response to help testing local flows where email delivery is not configured.
+      const genericMessage = "If an account with that email exists, you will receive a reset code shortly.";
+      if (process.env.NODE_ENV === 'development' || process.env.SHOW_OTP_IN_RESPONSE === 'true') {
+        res.json({ message: genericMessage, otp, sentAt, emailSent });
+      } else {
+        res.json({ message: genericMessage });
+      }
     } catch (error) {
       console.error("Forgot password error:", error);
       res.status(500).json({ message: "Internal server error" });
