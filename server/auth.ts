@@ -9,7 +9,12 @@ import { User as SelectUser, referrals, customerReferralCampaigns, freeBookingCr
 import { db } from "./db";
 import { eq, sql, and } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
-import { pool } from "./db";
+import pg from "pg";
+
+// Use a standard pg Pool for the session store — the neon serverless pool
+// uses WebSockets which are unreliable in Vercel serverless functions.
+const dbUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || "";
+const sessionPool = new pg.Pool({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
 
 import { sendWelcomeEmail } from "./welcomeEmail";
 
@@ -129,7 +134,7 @@ async function comparePasswords(supplied: string, stored: string) {
 
 async function ensureSessionTable() {
   try {
-    await pool.query(`
+    await sessionPool.query(`
       CREATE TABLE IF NOT EXISTS "session" (
         "sid" varchar NOT NULL COLLATE "default",
         "sess" json NOT NULL,
@@ -137,7 +142,7 @@ async function ensureSessionTable() {
         CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE
       ) WITH (OIDS=FALSE);
     `);
-    await pool.query(`
+    await sessionPool.query(`
       CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
     `);
   } catch (err) {
@@ -152,8 +157,8 @@ export async function setupAuth(app: Express) {
 
   const PostgresSessionStore = connectPg(session);
   const sessionStore = new PostgresSessionStore({ 
-    pool, 
-    createTableIfMissing: false, // We manage table creation above
+    pool: sessionPool as any,
+    createTableIfMissing: false,
     ttl: 7 * 24 * 60 * 60, // 7 days
   });
 
@@ -293,9 +298,11 @@ export async function setupAuth(app: Express) {
         })
         .catch(error => console.error('Failed to send welcome email:', error));
 
-      // Log in the user
+      // Log in the user — session save failure must not block registration response
       req.login(user, (err) => {
-        if (err) return next(err);
+        if (err) {
+          console.error("Session save failed after registration (non-fatal):", err);
+        }
         res.status(201).json({
           id: user.id,
           email: user.email,
@@ -323,7 +330,8 @@ export async function setupAuth(app: Express) {
       }
       req.login(user, (err) => {
         if (err) {
-          return next(err);
+          // Session save failed — log it but still return user data
+          console.error("Session save failed after login (non-fatal):", err);
         }
         res.json({
           id: user.id,
