@@ -68039,6 +68039,16 @@ __export(db_exports, {
   db: () => db,
   pool: () => pool2
 });
+function cleanNeonUrl(url3) {
+  let cleaned = url3.trim().replace(/^psql\s+['"]?/, "").replace(/['"]$/, "");
+  try {
+    const u = new URL(cleaned);
+    u.searchParams.delete("channel_binding");
+    return u.toString();
+  } catch {
+    return cleaned;
+  }
+}
 var rawUrl, dbUrl, pool2, db;
 var init_db2 = __esm({
   "server/db.ts"() {
@@ -68054,7 +68064,7 @@ var init_db2 = __esm({
         "NEON_DATABASE_URL (or DATABASE_URL) must be set."
       );
     }
-    dbUrl = rawUrl.trim().replace(/^psql\s+['"]?/, "").replace(/['"]$/, "");
+    dbUrl = cleanNeonUrl(rawUrl);
     pool2 = new eo({ connectionString: dbUrl });
     db = drizzle({ client: pool2, schema: schema_exports });
   }
@@ -105014,8 +105024,27 @@ var import_pg = __toESM(require_lib8(), 1);
 init_welcomeEmail();
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-var dbUrl2 = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || "";
-var sessionPool = new import_pg.default.Pool({ connectionString: dbUrl2, ssl: { rejectUnauthorized: false } });
+var rawDbUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || "";
+function cleanDbUrl(url3) {
+  try {
+    const u = new URL(url3);
+    u.searchParams.delete("channel_binding");
+    return u.toString();
+  } catch {
+    return url3;
+  }
+}
+var dbUrl2 = cleanDbUrl(rawDbUrl);
+var sessionPool = new import_pg.default.Pool({
+  connectionString: dbUrl2,
+  ssl: { rejectUnauthorized: false },
+  max: 5,
+  idleTimeoutMillis: 3e4,
+  connectionTimeoutMillis: 1e4
+});
+sessionPool.on("error", (err) => {
+  console.error("[SessionPool] Unexpected pool error:", err.message);
+});
 var scryptAsync = promisify(scrypt);
 async function processReferralRewards(referralRecord, newUser) {
   const referrerId = referralRecord.referrerId;

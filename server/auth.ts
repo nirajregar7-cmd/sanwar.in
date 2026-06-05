@@ -13,8 +13,29 @@ import pg from "pg";
 
 // Use a standard pg Pool for the session store — the neon serverless pool
 // uses WebSockets which are unreliable in Vercel serverless functions.
-const dbUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || "";
-const sessionPool = new pg.Pool({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
+// Strip channel_binding param — standard pg library doesn't support it.
+const rawDbUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || "";
+function cleanDbUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    u.searchParams.delete("channel_binding");
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+const dbUrl = cleanDbUrl(rawDbUrl);
+const sessionPool = new pg.Pool({
+  connectionString: dbUrl,
+  ssl: { rejectUnauthorized: false },
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
+
+sessionPool.on("error", (err) => {
+  console.error("[SessionPool] Unexpected pool error:", err.message);
+});
 
 import { sendWelcomeEmail } from "./welcomeEmail";
 

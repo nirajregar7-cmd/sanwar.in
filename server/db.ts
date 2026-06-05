@@ -15,8 +15,19 @@ if (!rawUrl) {
   );
 }
 
-// Strip common copy-paste mistakes: psql 'url' or psql "url"
-const dbUrl = rawUrl.trim().replace(/^psql\s+['"]?/, '').replace(/['"]$/, '');
+// Strip common copy-paste mistakes and unsupported params
+function cleanNeonUrl(url: string): string {
+  let cleaned = url.trim().replace(/^psql\s+['"]?/, '').replace(/['"]$/, '');
+  try {
+    const u = new URL(cleaned);
+    u.searchParams.delete("channel_binding");
+    return u.toString();
+  } catch {
+    return cleaned;
+  }
+}
+
+const dbUrl = cleanNeonUrl(rawUrl);
 
 export const pool = new Pool({ connectionString: dbUrl });
 export const db = drizzle({ client: pool, schema });

@@ -51,10 +51,24 @@ const appReady: Promise<void> = (async () => {
 app.get("/api/healthz", async (_req: Request, res: Response) => {
   try {
     await appReady;
+    // Test actual DB connectivity
+    let dbOk = false;
+    let dbError = "";
+    try {
+      const { pool } = await import("../server/db.js");
+      const client = await pool.connect();
+      await client.query("SELECT 1");
+      client.release();
+      dbOk = true;
+    } catch (e: any) {
+      dbError = e.message;
+    }
     res.json({
-      status: "ok",
+      status: dbOk ? "ok" : "degraded",
       env: {
-        database: !!(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL),
+        database_url_set: !!(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL),
+        database_connected: dbOk,
+        database_error: dbError || undefined,
         session_secret: !!process.env.SESSION_SECRET,
         node_env: process.env.NODE_ENV || "not set",
       },
