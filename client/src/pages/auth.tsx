@@ -16,6 +16,9 @@ import {
   Star,
   Shield,
   Zap,
+  Clock,
+  ArrowRight,
+  Crown,
 } from "lucide-react";
 import SalonOwnerOtpAuth from "@/components/SalonOwnerOtpAuth";
 
@@ -122,12 +125,11 @@ export default function AuthPage() {
           localStorage.setItem(`sanwar_onboarding_${userType}_fresh_signup`, "true");
 
           if (userType === "salon_owner" || userType === "brand_owner") {
-            navigate("/pricing?welcome=1");
+            window.location.href = "/pricing?welcome=1";
           } else {
             const redirectUrl = await getRedirectUrl();
-            navigate(redirectUrl);
+            window.location.href = redirectUrl || "/";
           }
-          window.location.reload();
         } else {
           setError(
             regData.error ||
@@ -171,11 +173,10 @@ export default function AuthPage() {
 
   const handleOtpAuthSuccess = (isNewRegistration?: boolean) => {
     if (isNewRegistration) {
-      navigate("/pricing?welcome=1");
+      window.location.href = "/pricing?welcome=1";
     } else {
-      navigate("/shopkeeper/dashboard");
+      window.location.href = "/shopkeeper/dashboard";
     }
-    window.location.reload();
   };
 
   if (showOtpAuth) {
@@ -380,6 +381,39 @@ export default function AuthPage() {
                     </label>
                   ))}
                 </RadioGroup>
+              </div>
+            )}
+
+            {/* 15-day trial callout — shows when salon owner is selected */}
+            {activeTab === "signup" && (userType === "salon_owner" || userType === "brand_owner") && (
+              <div className="rounded-2xl overflow-hidden border border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
+                <div className="px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-500 flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-white flex-shrink-0" />
+                  <span className="text-white text-sm font-bold">15-Day Free Trial Included</span>
+                </div>
+                <div className="px-4 py-3">
+                  <div className="space-y-1.5 mb-3">
+                    {[
+                      "Full Growth plan access — all features unlocked",
+                      "Unlimited staff, bookings & analytics",
+                      "No credit card required",
+                    ].map((f) => (
+                      <div key={f} className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-green-500 flex-shrink-0" strokeWidth={3} />
+                        <span className="text-xs text-gray-700">{f}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-purple-500" />
+                      <span className="text-xs font-semibold text-purple-700">Trial starts when you sign up</span>
+                    </div>
+                    <Link href="/pricing" className="text-xs text-purple-600 font-semibold hover:text-purple-800 flex items-center gap-1" data-testid="link-view-pricing">
+                      See plans <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                </div>
               </div>
             )}
 
