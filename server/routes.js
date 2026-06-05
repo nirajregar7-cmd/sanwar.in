@@ -56812,6 +56812,11 @@ var init_schema2 = __esm({
       isBrandOwner: boolean("is_brand_owner").default(false),
       isActive: boolean("is_active").default(true),
       isVerified: boolean("is_verified").default(false),
+      // Plan & trial fields (for salon_owner accounts)
+      planType: varchar("plan_type", { enum: ["trial", "starter", "growth", "premium"] }).default("trial"),
+      trialStartedAt: timestamp("trial_started_at"),
+      trialEndsAt: timestamp("trial_ends_at"),
+      planStartedAt: timestamp("plan_started_at"),
       createdAt: timestamp("created_at").defaultNow(),
       updatedAt: timestamp("updated_at").defaultNow()
     });
@@ -105224,6 +105229,11 @@ async function setupAuth(app) {
         await processReferralRewards(referralRecord, user);
         console.log(`\u2705 Referral processed: ${referralRecord.referralType} for user ${user.firstName}`);
       }
+      if (userType === "salon_owner" || userType === "brand_owner") {
+        const trialStartedAt = /* @__PURE__ */ new Date();
+        const trialEndsAt = new Date(Date.now() + 15 * 24 * 60 * 60 * 1e3);
+        await db.update(users).set({ planType: "trial", trialStartedAt, trialEndsAt }).where(eq(users.id, user.id));
+      }
       sendWelcomeEmail(user.email ?? "", user.firstName ?? "", user.userType).then((success2) => {
         if (success2) {
           console.log(`Welcome email sent successfully to ${user.email}`);
@@ -105311,7 +105321,10 @@ async function setupAuth(app) {
       firstName: user.firstName,
       lastName: user.lastName,
       userType: user.userType,
-      profileImageUrl: user.profileImageUrl
+      profileImageUrl: user.profileImageUrl,
+      planType: user.planType || "trial",
+      trialStartedAt: user.trialStartedAt || null,
+      trialEndsAt: user.trialEndsAt || null
     });
   });
 }
@@ -125727,7 +125740,10 @@ Crawl-delay: 1
           password: null
           // OTP-based auth, no password
         }).returning();
-        user = newUser;
+        const trialStartedAt = /* @__PURE__ */ new Date();
+        const trialEndsAt = new Date(Date.now() + 15 * 24 * 60 * 60 * 1e3);
+        await db.update(users).set({ planType: "trial", trialStartedAt, trialEndsAt }).where(eq(users.id, newUser.id));
+        user = { ...newUser, planType: "trial", trialStartedAt, trialEndsAt };
         sendWelcomeEmail(user.email, user.firstName, "salon_owner").then((success2) => {
           if (success2) {
             console.log(`Welcome email sent successfully to ${user.email}`);
@@ -125746,13 +125762,17 @@ Crawl-delay: 1
         }
         res.json({
           message: type === "registration" ? "Registration successful!" : "Login successful!",
+          isNewRegistration: type === "registration",
           user: {
             id: user.id,
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
             userType: user.userType,
-            profileImageUrl: user.profileImageUrl
+            profileImageUrl: user.profileImageUrl,
+            planType: user.planType,
+            trialStartedAt: user.trialStartedAt,
+            trialEndsAt: user.trialEndsAt
           }
         });
       });
