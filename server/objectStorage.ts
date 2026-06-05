@@ -1,4 +1,4 @@
-import { Storage, File } from "@google-cloud/storage";
+import type { Storage, File } from "@google-cloud/storage";
 import { Response } from "express";
 import { randomUUID } from "crypto";
 import {
@@ -11,23 +11,35 @@ import {
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
+// Lazily-loaded Storage class — avoids importing @google-cloud/storage at startup
+let _StorageClass: typeof Storage | null = null;
+
+async function getStorageClass(): Promise<typeof Storage> {
+  if (!_StorageClass) {
+    const gcs = await import("@google-cloud/storage");
+    _StorageClass = gcs.Storage;
+  }
+  return _StorageClass!;
+}
+
 // Creates the GCS storage client.
 // On Replit: uses the sidecar for authentication (no credentials needed).
 // On Vercel / other environments: uses GOOGLE_APPLICATION_CREDENTIALS_JSON env var.
-function createStorageClient(): Storage {
+async function createStorageClient(): Promise<Storage> {
+  const StorageClass = await getStorageClass();
   const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
   if (credentialsJson) {
     try {
       const credentials = JSON.parse(credentialsJson);
       console.log("Using GOOGLE_APPLICATION_CREDENTIALS_JSON for GCS authentication");
-      return new Storage({ credentials });
+      return new StorageClass({ credentials });
     } catch (e) {
       console.error("Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:", e);
     }
   }
 
   // Default: Replit sidecar authentication
-  return new Storage({
+  return new StorageClass({
     credentials: {
       audience: "replit",
       subject_token_type: "access_token",
@@ -46,8 +58,28 @@ function createStorageClient(): Storage {
   });
 }
 
-// The object storage client is used to interact with the object storage service.
-export const objectStorageClient = createStorageClient();
+// Lazy singleton — created only on first use (not at module load time)
+let _clientInstance: Storage | null = null;
+
+async function getClientInstance(): Promise<Storage> {
+  if (!_clientInstance) {
+    _clientInstance = await createStorageClient();
+  }
+  return _clientInstance;
+}
+
+// Proxy so existing code using `objectStorageClient.bucket(...)` still works
+// without needing to await. The proxy methods are all async, so callers
+// that already await them will be fine.
+export const objectStorageClient = new Proxy({} as Storage, {
+  get(_target, prop: string | symbol) {
+    // Return an async function that resolves the client then calls the method
+    return (...args: unknown[]) =>
+      getClientInstance().then((client) =>
+        (client as any)[prop](...args)
+      );
+  },
+});
 
 export class ObjectNotFoundError extends Error {
   constructor() {
@@ -95,12 +127,13 @@ export class ObjectStorageService {
 
   // Search for a public object from the search paths.
   async searchPublicObject(filePath: string): Promise<File | null> {
+    const client = await getClientInstance();
     for (const searchPath of this.getPublicObjectSearchPaths()) {
       const fullPath = `${searchPath}/${filePath}`;
 
       // Full path format: /<bucket_name>/<object_name>
       const { bucketName, objectName } = parseObjectPath(fullPath);
-      const bucket = objectStorageClient.bucket(bucketName);
+      const bucket = client.bucket(bucketName);
       const file = bucket.file(objectName);
 
       // Check if file exists
@@ -180,6 +213,7 @@ export class ObjectStorageService {
       throw new ObjectNotFoundError();
     }
 
+    const client = await getClientInstance();
     const entityId = parts.slice(1).join("/");
     let entityDir = this.getPrivateObjectDir();
     if (!entityDir.endsWith("/")) {
@@ -187,7 +221,7 @@ export class ObjectStorageService {
     }
     const objectEntityPath = `${entityDir}${entityId}`;
     const { bucketName, objectName } = parseObjectPath(objectEntityPath);
-    const bucket = objectStorageClient.bucket(bucketName);
+    const bucket = client.bucket(bucketName);
     const objectFile = bucket.file(objectName);
     const [exists] = await objectFile.exists();
     if (!exists) {
