@@ -50,6 +50,11 @@ export const users = pgTable("users", {
   isBrandOwner: boolean("is_brand_owner").default(false),
   isActive: boolean("is_active").default(true),
   isVerified: boolean("is_verified").default(false),
+  // Plan & trial fields (for salon_owner accounts)
+  planType: varchar("plan_type", { enum: ["trial", "starter", "growth", "premium"] }).default("trial"),
+  trialStartedAt: timestamp("trial_started_at"),
+  trialEndsAt: timestamp("trial_ends_at"),
+  planStartedAt: timestamp("plan_started_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

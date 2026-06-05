@@ -11039,7 +11039,11 @@ Crawl-delay: 1
           password: null, // OTP-based auth, no password
         }).returning();
         
-        user = newUser;
+        // Set 15-day trial
+        const trialStartedAt = new Date();
+        const trialEndsAt = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+        await db.update(users).set({ planType: 'trial', trialStartedAt, trialEndsAt }).where(eq(users.id, newUser.id));
+        user = { ...newUser, planType: 'trial', trialStartedAt, trialEndsAt };
         
         // Send welcome email
         sendWelcomeEmail(user.email!, user.firstName, 'salon_owner')
@@ -11070,6 +11074,7 @@ Crawl-delay: 1
         
         res.json({
           message: type === 'registration' ? 'Registration successful!' : 'Login successful!',
+          isNewRegistration: type === 'registration',
           user: {
             id: user.id,
             email: user.email,
@@ -11077,6 +11082,9 @@ Crawl-delay: 1
             lastName: user.lastName,
             userType: user.userType,
             profileImageUrl: user.profileImageUrl,
+            planType: user.planType,
+            trialStartedAt: user.trialStartedAt,
+            trialEndsAt: user.trialEndsAt,
           }
         });
       });

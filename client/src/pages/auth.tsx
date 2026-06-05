@@ -121,8 +121,12 @@ export default function AuthPage() {
           localStorage.removeItem(`sanwar_onboarding_${userType}_skipped_at`);
           localStorage.setItem(`sanwar_onboarding_${userType}_fresh_signup`, "true");
 
-          const redirectUrl = await getRedirectUrl();
-          navigate(redirectUrl);
+          if (userType === "salon_owner" || userType === "brand_owner") {
+            navigate("/pricing?welcome=1");
+          } else {
+            const redirectUrl = await getRedirectUrl();
+            navigate(redirectUrl);
+          }
           window.location.reload();
         } else {
           setError(
@@ -165,8 +169,12 @@ export default function AuthPage() {
     }
   };
 
-  const handleOtpAuthSuccess = () => {
-    navigate("/");
+  const handleOtpAuthSuccess = (isNewRegistration?: boolean) => {
+    if (isNewRegistration) {
+      navigate("/pricing?welcome=1");
+    } else {
+      navigate("/shopkeeper/dashboard");
+    }
     window.location.reload();
   };
 

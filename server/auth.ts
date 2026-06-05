@@ -5,7 +5,7 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser, referrals, customerReferralCampaigns, freeBookingCredits } from "@shared/schema";
+import { User as SelectUser, users as users_table, referrals, customerReferralCampaigns, freeBookingCredits } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
@@ -287,6 +287,13 @@ export async function setupAuth(app: Express) {
         console.log(`✅ Referral processed: ${referralRecord.referralType} for user ${user.firstName}`);
       }
 
+      // Set 15-day trial for salon owners and brand owners
+      if (userType === 'salon_owner' || userType === 'brand_owner') {
+        const trialStartedAt = new Date();
+        const trialEndsAt = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+        await db.update(users_table).set({ planType: 'trial', trialStartedAt, trialEndsAt }).where(eq(users_table.id, user.id));
+      }
+
       // Send welcome email (async, don't block registration)
       sendWelcomeEmail(user.email ?? '', user.firstName ?? '', user.userType as 'customer' | 'salon_owner' | 'brand_owner')
         .then(success => {
@@ -393,6 +400,9 @@ export async function setupAuth(app: Express) {
       lastName: user.lastName,
       userType: user.userType,
       profileImageUrl: user.profileImageUrl,
+      planType: (user as any).planType || 'trial',
+      trialStartedAt: (user as any).trialStartedAt || null,
+      trialEndsAt: (user as any).trialEndsAt || null,
     });
   });
 }

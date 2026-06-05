@@ -10,7 +10,7 @@ import { queryClient } from '@/lib/queryClient';
 
 interface SalonOwnerOtpAuthProps {
   onBack: () => void;
-  onSuccess: () => void;
+  onSuccess: (isNewRegistration?: boolean) => void;
 }
 
 type AuthStep = 'phone' | 'otp';
@@ -89,7 +89,7 @@ export default function SalonOwnerOtpAuth({ onBack, onSuccess }: SalonOwnerOtpAu
         title: 'Success',
         description: data.message,
       });
-      onSuccess();
+      onSuccess(data.isNewRegistration === true);
     },
     onError: (error: Error) => {
       toast({

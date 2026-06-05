@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Link } from "wouter";
+import { TrialStatusBanner } from "@/components/TrialStatusBanner";
 import { LocalUploader } from "@/components/LocalUploader";
 import { LeafletLocationPicker } from "@/components/LeafletLocationPicker";
 import { OwnerShowcasePanel } from "@/components/OwnerShowcasePanel";
@@ -2052,6 +2053,11 @@ export default function OwnerDashboard() {
         </div>
       )}
       
+      {/* Trial Status Banner */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <TrialStatusBanner />
+      </div>
+
       {/* Premium Header */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
