@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -75,6 +75,7 @@ import USCityDetail from "@/pages/usa/city-detail";
 import Blog from "@/pages/Blog";
 
 // Info Pages
+import PricingPage from "@/pages/pricing";
 import About from "@/pages/About";
 import Services from "@/pages/Services";
 import HireStaff from "@/pages/hire-staff";
@@ -96,9 +97,13 @@ import ConfirmationSettings from "@/pages/owner/confirmation-settings";
 import OffersPage from "@/pages/owner/offers";
 import Analytics from "@/pages/owner/analytics";
 
+// Public marketing pages that should never show country onboarding
+const PUBLIC_BYPASS_PATHS = ["/pricing", "/about", "/contact", "/blog", "/landing", "/explore"];
+
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const { isConfigured } = useCountryConfig();
+  const [currentPath] = useLocation();
 
   if (isLoading) {
     return (
@@ -108,8 +113,11 @@ function Router() {
     );
   }
 
-  // Show country onboarding if not configured
-  if (!isConfigured) {
+  // Skip country onboarding for public marketing pages
+  const isBypassPath = PUBLIC_BYPASS_PATHS.some(p => currentPath === p || currentPath.startsWith(p + "/"));
+
+  // Show country onboarding if not configured (except for public pages)
+  if (!isConfigured && !isBypassPath) {
     return <CountryOnboarding />;
   }
 
@@ -140,6 +148,9 @@ function Router() {
       
       {/* Landing page - accessible to all users */}
       <Route path="/landing" component={Landing} />
+
+      {/* Pricing page - accessible to all */}
+      <Route path="/pricing" component={PricingPage} />
       
       {/* Explore page - accessible to all users */}
       <Route path="/explore" component={ExplorePage} />

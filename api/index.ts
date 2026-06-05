@@ -18,8 +18,26 @@ app.use((req, res, next) => {
   next();
 });
 
+// Validate required environment variables at startup
+function validateEnv() {
+  const missing: string[] = [];
+  if (!process.env.NEON_DATABASE_URL && !process.env.DATABASE_URL) {
+    missing.push("DATABASE_URL (or NEON_DATABASE_URL)");
+  }
+  if (!process.env.SESSION_SECRET) {
+    console.warn("[WARN] SESSION_SECRET not set — using insecure default. Set it in Vercel env vars.");
+  }
+  if (missing.length > 0) {
+    const msg = `[STARTUP ERROR] Missing required environment variables: ${missing.join(", ")}`;
+    console.error(msg);
+    throw new Error(msg);
+  }
+  console.log("[Startup] Environment OK — DB:", !!(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL), "| SESSION_SECRET:", !!process.env.SESSION_SECRET, "| NODE_ENV:", process.env.NODE_ENV);
+}
+
 // Initialize routes once and reuse across warm invocations
 const appReady: Promise<void> = (async () => {
+  validateEnv();
   await registerRoutes(app);
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -28,6 +46,24 @@ const appReady: Promise<void> = (async () => {
     res.status(status).json({ message });
   });
 })();
+
+// Health check endpoint — useful for debugging Vercel deployment issues
+app.get("/api/healthz", async (_req: Request, res: Response) => {
+  try {
+    await appReady;
+    res.json({
+      status: "ok",
+      env: {
+        database: !!(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL),
+        session_secret: !!process.env.SESSION_SECRET,
+        node_env: process.env.NODE_ENV || "not set",
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ status: "error", message: err.message });
+  }
+});
 
 export default async function handler(req: Request, res: Response) {
   await appReady;
