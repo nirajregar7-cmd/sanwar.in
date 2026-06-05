@@ -9,7 +9,20 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
-      "includeFiles": "server/**,shared/**"
+      "includeFiles": "server/**,shared/**",
+      "externalNodeModules": [
+        "@google-cloud/storage",
+        "google-gax",
+        "ws",
+        "pg",
+        "pg-native",
+        "bcrypt",
+        "multer",
+        "nodemailer",
+        "web-push",
+        "twilio",
+        "qrcode"
+      ]
     }
   },
   "env": {

@@ -36,15 +36,22 @@ function validateEnv() {
 }
 
 // Initialize routes once and reuse across warm invocations
+let initError: Error | null = null;
 const appReady: Promise<void> = (async () => {
-  validateEnv();
-  await registerRoutes(app);
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    console.error("Server error:", err);
-    res.status(status).json({ message });
-  });
+  try {
+    validateEnv();
+    await registerRoutes(app);
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      console.error("Server error:", err);
+      res.status(status).json({ message });
+    });
+    console.log("[Startup] Routes registered successfully");
+  } catch (err: any) {
+    initError = err;
+    console.error("[FATAL] App initialization failed:", err?.message, err?.stack);
+  }
 })();
 
 // Health check endpoint — useful for debugging Vercel deployment issues
@@ -81,5 +88,13 @@ app.get("/api/healthz", async (_req: Request, res: Response) => {
 
 export default async function handler(req: Request, res: Response) {
   await appReady;
+  if (initError) {
+    console.error("[Handler] Serving error due to init failure:", initError.message);
+    return res.status(500).json({
+      error: "Server initialization failed",
+      message: initError.message,
+      hint: "Check DATABASE_URL / NEON_DATABASE_URL env vars are set in Vercel dashboard",
+    });
+  }
   app(req, res);
 }
