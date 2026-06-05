@@ -1,14 +1,15 @@
 {
   "version": 2,
-  "buildCommand": "npm run build && node_modules/.bin/esbuild api/index.ts --platform=node --bundle --format=esm --outfile=api/index.js --external:pg-native --external:bufferutil --external:utf-8-validate",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist/public",
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api" },
     { "source": "/((?!api).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/index.js": {
-      "maxDuration": 30
+    "api/index.ts": {
+      "maxDuration": 30,
+      "includeFiles": "server/**,shared/**"
     }
   },
   "env": {
