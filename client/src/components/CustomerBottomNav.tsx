@@ -10,7 +10,6 @@ const HIDE_ON_ROUTES = [
   "/brand",
   "/auth",
   "/business-signup",
-  "/clerk-",
   "/user-type-selection",
   "/landing",
   "/email-verification",

@@ -101,17 +101,7 @@ export interface IStorage {
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserBySocialId(socialProvider: string, socialId: string): Promise<User | undefined>;
-  getUserByClerkId(clerkId: string): Promise<User | undefined>;
   createUser(user: UpsertUser): Promise<User>;
-  createUserFromClerk(userData: {
-    clerkId: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    phone: string;
-    profileImageUrl: string | null;
-    userType: "customer" | "salon_owner";
-  }): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserType(id: string, userType: "customer" | "salon_owner"): Promise<User>;
 
@@ -318,43 +308,6 @@ export class DatabaseStorage implements IStorage {
         eq(users.socialId, socialId)
       )
     );
-    return user;
-  }
-
-  async getUserByClerkId(clerkId: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.clerkId, clerkId));
-    return user;
-  }
-
-  async createUserFromClerk(userData: {
-    clerkId: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    phone: string;
-    profileImageUrl: string | null;
-    userType: "customer" | "salon_owner";
-  }): Promise<User> {
-    const [user] = await db.insert(users).values({
-      clerkId: userData.clerkId,
-      email: userData.email,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      phone: userData.phone,
-      profileImageUrl: userData.profileImageUrl,
-      userType: userData.userType,
-      role: 'user',
-      password: null,
-      isSocialAuth: false,
-      isBlocked: false,
-      socialProvider: null,
-      socialId: null,
-      brandName: null,
-      brandDescription: null,
-      isBrandOwner: false,
-      isActive: true,
-      isVerified: false,
-    }).returning();
     return user;
   }
 

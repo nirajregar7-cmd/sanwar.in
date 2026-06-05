@@ -9,7 +9,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
-import { withClerkAuth, isAuthenticated as clerkIsAuthenticated } from "./clerk";
 import {
   ObjectStorageService,
   ObjectNotFoundError,
@@ -126,43 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup SEO routes for "near me" searches
   setupSEORoutes(app);
   
-  // Add Clerk middleware
-  app.use(withClerkAuth);
-
-  // Clerk sync route
-  app.get('/api/clerk/sync-user', clerkIsAuthenticated, async (req: any, res) => {
-    try {
-      if (!req.auth?.userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-
-      // Get or create user in our database based on Clerk user data
-      const clerkUserId = req.auth.userId;
-      const clerkUser = req.auth.sessionClaims;
-
-      let user = await storage.getUserByClerkId(clerkUserId);
-      
-      if (!user) {
-        // Create new user with Clerk data
-        user = await storage.createUserFromClerk({
-          clerkId: clerkUserId,
-          email: clerkUser?.email || '',
-          firstName: clerkUser?.firstName || clerkUser?.given_name || '',
-          lastName: clerkUser?.lastName || clerkUser?.family_name || '',
-          phone: clerkUser?.phoneNumber || clerkUser?.phone_number || '',
-          profileImageUrl: clerkUser?.imageUrl || clerkUser?.image_url || null,
-          userType: 'customer', // Default role
-        });
-      }
-
-      res.json(user);
-    } catch (error) {
-      console.error('Error syncing Clerk user:', error);
-      res.status(500).json({ error: 'Failed to sync user' });
-    }
-  });
-
-  // Update user type for Clerk users
+  // Update user type
   app.put('/api/user/type', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.id;

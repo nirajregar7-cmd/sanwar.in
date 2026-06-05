@@ -42,8 +42,6 @@ export const users = pgTable("users", {
   isSocialAuth: boolean("is_social_auth").default(false),
   socialProvider: varchar("social_provider", { enum: ["google", "facebook"] }),
   socialId: varchar("social_id"),
-  // Clerk authentication field
-  clerkId: varchar("clerk_id").unique(),
   // Brand owner fields
   brandName: varchar("brand_name"),
   brandDescription: text("brand_description"),
