@@ -62,7 +62,8 @@ app.get("/api/healthz", async (_req: Request, res: Response) => {
     let dbOk = false;
     let dbError = "";
     try {
-      const { pool } = await import("../server/db.js");
+      const { pool } = await import("../server/db");
+
       const client = await pool.connect();
       await client.query("SELECT 1");
       client.release();
