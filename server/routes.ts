@@ -37,8 +37,8 @@ const scryptAsync = promisify(scrypt);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB
-    files: 50 // Maximum 50 files
+    fileSize: 10 * 1024 * 1024, // 10MB per file
+    files: 10 // Maximum 10 files per request
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
@@ -52,6 +52,11 @@ const upload = multer({
     }
   }
 });
+
+// Escape HTML special characters to prevent XSS in email templates
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
 // Helper function to get the correct base URL
 function getBaseUrl(requestHost?: string): string {
@@ -124,6 +129,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Setup SEO routes for "near me" searches
   setupSEORoutes(app);
+
+  // Admin middleware to check admin permissions
+  const isAdmin = async (req: any, res: any, next: any) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || (user.userType !== 'admin' && user.userType !== 'super_admin')) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      req.adminUser = user;
+      next();
+    } catch (error) {
+      console.error("Error checking admin permissions:", error);
+      res.status(500).json({ error: "Permission check failed" });
+    }
+  };
   
   // Update user type
   app.put('/api/user/type', isAuthenticated, async (req: any, res) => {
@@ -3046,7 +3072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin endpoint to manually trigger pending payouts
-  app.post('/api/admin/trigger-payouts', async (req, res) => {
+  app.post('/api/admin/trigger-payouts', isAuthenticated, isAdmin, async (req, res) => {
     try {
       console.log('🚀 Manual payout trigger started...');
       
@@ -6350,7 +6376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/salons/media/upload", isAuthenticated, upload.array('files', 50), async (req: any, res) => {
+  app.post("/api/salons/media/upload", isAuthenticated, upload.array('files', 10), async (req: any, res) => {
     try {
       const userId = req.user?.id;
       const { salonId } = req.body;
@@ -7401,27 +7427,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Legacy payment webhook removed - now using Cashfree webhooks
 
-  // Admin middleware to check admin permissions
-  const isAdmin = async (req: any, res: any, next: any) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: "User not authenticated" });
-      }
-
-      const user = await storage.getUser(userId);
-      if (!user || (user.userType !== 'admin' && user.userType !== 'super_admin')) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-
-      req.adminUser = user;
-      next();
-    } catch (error) {
-      console.error("Error checking admin permissions:", error);
-      res.status(500).json({ error: "Permission check failed" });
-    }
-  };
-
   // Admin API endpoints
   app.get("/api/admin/dashboard", isAuthenticated, isAdmin, async (req, res) => {
     try {
@@ -8102,9 +8107,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Test email sending endpoint for debugging
+  // Test email sending endpoint for debugging (development only)
   app.post("/api/test-send-email", async (req, res) => {
     try {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ error: "Test endpoints are disabled in production" });
+      }
       const { to, subject, message, type } = req.body;
       
       if (!to || !subject || !message) {
@@ -8125,7 +8133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h1 style="color: #8B5CF6;">Test Booking Confirmation</h1>
               <p>This is a test email to verify the booking confirmation system is working.</p>
-              <p><strong>Message:</strong> ${message}</p>
+              <p><strong>Message:</strong> ${escapeHtml(message)}</p>
               <p>If you receive this email, the system is working correctly.</p>
               <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
                 <p style="margin: 0;"><strong>Sent from:</strong> Sanwar booking system</p>
@@ -8144,7 +8152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h1>Test Email</h1>
-              <p>${message}</p>
+              <p>${escapeHtml(message)}</p>
               <p><em>Sent from Sanwar at ${new Date().toLocaleString()}</em></p>
             </div>
           `
@@ -8157,9 +8165,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Test booking notification system
+  // Test booking notification system (development only)
   app.post("/api/test-booking-notification", async (req, res) => {
     try {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ error: "Test endpoints are disabled in production" });
+      }
       const { bookingId } = req.body;
       
       if (!bookingId) {
@@ -10640,8 +10651,11 @@ Crawl-delay: 1
     }
   });
 
-  // Test endpoint to verify domain whitelisting
+  // Test endpoint to verify domain whitelisting (development only)
   app.get('/test-cashfree-domain', (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: "Test endpoints are disabled in production" });
+    }
     res.json({
       message: 'Domain test successful',
       domain: 'https://sanwar-book-nirajregar7.replit.app',
@@ -10681,7 +10695,7 @@ Crawl-delay: 1
             // Auto close after 10 seconds
             setTimeout(() => {
               if (window.parent && window.parent !== window) {
-                window.parent.postMessage({ type: 'payment_success' }, '*');
+                window.parent.postMessage({ type: 'payment_success' }, window.location.origin);
               } else {
                 window.location.href = 'https://sanwar-book-nirajregar7.replit.app';
               }
@@ -10751,9 +10765,12 @@ Crawl-delay: 1
     }
   });
 
-  // Customer welcome email test endpoint
+  // Customer welcome email test endpoint (development only)
   app.post('/api/test-customer-welcome-email', async (req, res) => {
     try {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ error: "Test endpoints are disabled in production" });
+      }
       const { email, firstName } = req.body;
       
       if (!email || !firstName) {
@@ -11079,10 +11096,14 @@ Crawl-delay: 1
     // Table may already exist, ignore
   }
 
-  const STAFF_JWT_SECRET = process.env.JWT_SECRET || 'sanwar-staff-secret-key-2024';
+  const STAFF_JWT_SECRET = process.env.JWT_SECRET;
+  if (!STAFF_JWT_SECRET) {
+    console.error("FATAL: JWT_SECRET environment variable is not set. Staff auth will be unavailable.");
+  }
 
   // Helper: create staff token
   function createStaffToken(staffMember: any) {
+    if (!STAFF_JWT_SECRET) throw new Error("JWT_SECRET is not configured");
     return jwt.sign(
       {
         staffId: staffMember.id,
@@ -11218,6 +11239,7 @@ Crawl-delay: 1
   // Middleware to verify staff token
   async function verifyStaffToken(req: any, res: any, next: any) {
     try {
+      if (!STAFF_JWT_SECRET) return res.status(503).json({ error: "Auth not configured" });
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: "No token provided" });
@@ -11243,6 +11265,7 @@ Crawl-delay: 1
   // Get current staff profile
   app.get('/api/staff/me', async (req, res) => {
     try {
+      if (!STAFF_JWT_SECRET) return res.status(503).json({ error: "Auth not configured" });
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: "No token provided" });
@@ -11288,6 +11311,7 @@ Crawl-delay: 1
   // Update staff profile
   app.put('/api/staff/profile', async (req, res) => {
     try {
+      if (!STAFF_JWT_SECRET) return res.status(503).json({ error: "Auth not configured" });
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: "No token provided" });
@@ -11328,6 +11352,7 @@ Crawl-delay: 1
   // Get staff's upcoming bookings
   app.get('/api/staff/bookings', async (req, res) => {
     try {
+      if (!STAFF_JWT_SECRET) return res.status(503).json({ error: "Auth not configured" });
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: "No token provided" });
@@ -11898,9 +11923,13 @@ Crawl-delay: 1
   // PROFESSIONAL PORTAL — Auth + Job Offers
   // ============================================================
 
-  const PROFESSIONAL_JWT_SECRET = process.env.JWT_SECRET || 'sanwar-professional-secret-2024';
+  const PROFESSIONAL_JWT_SECRET = process.env.JWT_SECRET;
+  if (!PROFESSIONAL_JWT_SECRET) {
+    console.error("FATAL: JWT_SECRET environment variable is not set. Professional auth will be unavailable.");
+  }
 
   function createProfessionalToken(professional: any) {
+    if (!PROFESSIONAL_JWT_SECRET) throw new Error("JWT_SECRET is not configured");
     return jwt.sign(
       { professionalId: professional.id, mobile: professional.mobile, type: 'professional' },
       PROFESSIONAL_JWT_SECRET,
@@ -11910,6 +11939,7 @@ Crawl-delay: 1
 
   async function verifyProfessionalToken(req: any, res: any, next: any) {
     try {
+      if (!PROFESSIONAL_JWT_SECRET) return res.status(503).json({ error: "Auth not configured" });
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: "No token provided" });
       const token = authHeader.substring(7);

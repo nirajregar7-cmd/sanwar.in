@@ -186,7 +186,14 @@ export async function setupAuth(app: Express) {
   const isProduction = process.env.NODE_ENV === 'production';
 
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "your-secret-key-change-this-in-production",
+    secret: (() => {
+      const s = process.env.SESSION_SECRET;
+      if (!s) {
+        console.error("FATAL: SESSION_SECRET environment variable is not set. Using random secret — sessions will not survive restarts.");
+        return require("crypto").randomBytes(32).toString("hex");
+      }
+      return s;
+    })(),
     resave: false,
     saveUninitialized: false,
     store: sessionStore,
