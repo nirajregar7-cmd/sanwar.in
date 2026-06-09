@@ -14,14 +14,25 @@ export interface StaffMember {
   photoUrl: string | null;
   salonId: string;
   salonName?: string;
+  city?: string | null;
+  area?: string | null;
   experience: string | null;
   specialties: string[] | null;
+  skills?: string[] | null;
+  comfortableWith?: string | null;
+  currentlyWorking?: string | null;
+  expectedSalary?: string | null;
+  employmentType?: string | null;
+  willingToRelocate?: boolean | null;
   bio: string | null;
   isActive: boolean | null;
   rating: string | null;
   totalReviews: number | null;
   canManageSchedule: boolean | null;
   defaultSlotDuration: number | null;
+  portfolioImages?: string[] | null;
+  resumeUrl?: string | null;
+  resumeOriginalName?: string | null;
 }
 
 export function useStaffAuth() {
@@ -88,7 +99,7 @@ export function useStaffAuth() {
     window.location.href = "/staff-login";
   }, []);
 
-  const apiHeaders = useCallback(() => {
+  const apiHeaders = useCallback((): Record<string, string> => {
     const t = localStorage.getItem(STAFF_TOKEN_KEY);
     return t ? { Authorization: `Bearer ${t}` } : {};
   }, []);

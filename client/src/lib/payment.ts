@@ -4,6 +4,11 @@ export interface CashfreeOrderData {
   orderAmount: number;
   orderCurrency: string;
   gateway: 'cashfree';
+  salonId?: string;
+  serviceId?: string;
+  timeSlotId?: string;
+  date?: string;
+  staffId?: string;
 }
 
 export interface PaymentOptions {

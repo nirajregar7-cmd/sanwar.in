@@ -76,7 +76,8 @@ export function HelpTicketForm({ isOpen, onClose, userType }: HelpTicketFormProp
 
   const submitTicketMutation = useMutation({
     mutationFn: async (data: HelpTicketFormData) => {
-      return apiRequest("POST", "/api/help-tickets", data);
+      const res = await apiRequest("POST", "/api/help-tickets", data);
+      return await res.json();
     },
     onSuccess: (data) => {
       toast({

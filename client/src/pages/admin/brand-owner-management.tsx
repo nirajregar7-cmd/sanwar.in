@@ -65,7 +65,7 @@ export default function BrandOwnerManagement() {
   const [showEditDialog, setShowEditDialog] = useState(false);
 
   // Fetch all brand owners
-  const { data: brandOwners, isLoading } = useQuery({
+  const { data: brandOwners, isLoading } = useQuery<BrandOwner[]>({
     queryKey: ['/api/admin/brand-owners'],
   });
 

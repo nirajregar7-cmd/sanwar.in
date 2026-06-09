@@ -95,6 +95,7 @@ export default function StaffDashboard() {
   });
 
   const startEdit = () => {
+    if (!staff) return;
     setForm({
       name: staff.name || "",
       role: staff.role || "",

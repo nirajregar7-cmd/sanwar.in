@@ -171,7 +171,7 @@ export function SalonMap({ className }: SalonMapProps) {
   }, []);
 
   // Fetch salons with availability data
-  const { data: salonsData, isLoading } = useQuery({
+  const { data: salonsData, isLoading } = useQuery<any[]>({
     queryKey: ["/api/salons/map", userLocation],
     enabled: !!userLocation,
   });

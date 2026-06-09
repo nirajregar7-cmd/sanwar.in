@@ -495,7 +495,7 @@ export default function SalonMediaUploader({ salonId, maxFiles = 50 }: SalonMedi
                   type="checkbox"
                   id="isPrimary"
                   name="isPrimary"
-                  defaultChecked={editingMedia.isPrimary}
+                  defaultChecked={editingMedia.isPrimary ?? false}
                   className="rounded"
                 />
                 <Label htmlFor="isPrimary" className="text-sm">

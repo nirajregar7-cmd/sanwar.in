@@ -144,13 +144,13 @@ export function NotificationManager({ userId }: NotificationManagerProps) {
   }, []);
 
   // Get notification settings
-  const { data: settings, isLoading: settingsLoading } = useQuery({
+  const { data: settings, isLoading: settingsLoading } = useQuery<NotificationSettings | null>({
     queryKey: ["/api/notifications/settings", userId],
     enabled: !!userId,
   });
 
   // Get notification history
-  const { data: notificationHistory, isLoading: historyLoading } = useQuery({
+  const { data: notificationHistory, isLoading: historyLoading } = useQuery<NotificationHistory[]>({
     queryKey: ["/api/notifications/history", userId],
     enabled: !!userId,
   });

@@ -14,7 +14,7 @@ import type { StaffRegistration, StaffJobOffer } from "@/../../shared/schema";
 const PROFESSIONAL_TOKEN_KEY = "sanwar_professional_token";
 
 function getToken() { return localStorage.getItem(PROFESSIONAL_TOKEN_KEY); }
-function getHeaders() {
+function getHeaders(): Record<string, string> {
   const t = getToken();
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
