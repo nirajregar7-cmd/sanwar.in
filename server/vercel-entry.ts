@@ -1,6 +1,6 @@
 // Vercel serverless function entry point
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "../server/routes";
+import { registerRoutes } from "./routes";
 
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -62,7 +62,7 @@ app.get("/api/healthz", async (_req: Request, res: Response) => {
     let dbOk = false;
     let dbError = "";
     try {
-      const { pool } = await import("../server/db");
+      const { pool } = await import("./db");
 
       const client = await pool.connect();
       await client.query("SELECT 1");

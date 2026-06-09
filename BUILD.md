@@ -18,9 +18,12 @@ vite build
 
 ### 2. Server Build
 ```bash
-# API functions are built automatically by Vercel
-# Uses the api/index.ts as entry point
+# Bundled by scripts/vercel-build.mjs via esbuild
+# Uses server/vercel-entry.ts as the entry point
 ```
+The whole `server/` + `shared/` graph is bundled into a single self-contained
+ESM file. A single-file bundle avoids Node's ESM extension-resolution errors
+that occur when a `"type": "module"` function is transpiled file-by-file.
 
 ## Deployment Configuration
 
@@ -28,18 +31,17 @@ vite build
 ```json
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server/index.ts",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "package.json", 
-      "use": "@vercel/static-build"
-    }
-  ]
+  "buildCommand": "node ./scripts/vercel-build.mjs",
+  "framework": null,
+  "env": { "NODE_ENV": "production" }
 }
 ```
+The build command emits the [Build Output API](https://vercel.com/docs/build-output-api/v3)
+at `.vercel/output`: the bundled function under
+`functions/api/index.func`, the Vite frontend under `static/`, and routing in
+`config.json`. The function entry deliberately lives in `server/` (not a
+top-level `/api` directory), because Vercel always builds files under `/api` as
+its own functions, which would override the Build Output API function.
 
 ### Routes
 - `/api/*` → Server functions
@@ -60,8 +62,10 @@ npx drizzle-kit push
 ## File Structure
 ```
 /
-├── api/
-│   └── index.ts          # Vercel serverless entry
+├── server/
+│   └── vercel-entry.ts   # Vercel serverless entry (bundled by the build)
+├── scripts/
+│   └── vercel-build.mjs  # Emits .vercel/output (Build Output API)
 ├── dist/                 # Built frontend files
 ├── server/               # Express.js backend
 ├── client/               # React frontend
