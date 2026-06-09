@@ -165,7 +165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
-      res.json(null);
+      res.status(500).json({ message: "Failed to fetch user" });
     }
   });
 
@@ -953,6 +953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(eq(salonFollowers.salonId, salonId), eq(salonFollowers.customerId, customerId)));
       res.json({ isFollowing: !!row });
     } catch (error) {
+      console.error("Error checking follow status:", error);
       res.status(500).json({ message: "Failed to check follow status" });
     }
   });
@@ -1003,6 +1004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(salonFollowers.salonId, salonId));
       res.json({ followerCount });
     } catch (error) {
+      console.error("Error getting follower count:", error);
       res.status(500).json({ message: "Failed to get follower count" });
     }
   });
@@ -1019,6 +1021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(salonFollowers.createdAt));
       res.json(followed.map(r => r.salon));
     } catch (error) {
+      console.error("Error getting followed salons:", error);
       res.status(500).json({ message: "Failed to get followed salons" });
     }
   });
@@ -2039,7 +2042,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   applicableDiscount = parseFloat(svcDiscounts[service.id]);
                   discountType = offer.discountType;
                 }
-              } catch {}
+              } catch (parseError) {
+                console.error('Failed to parse serviceSpecificDiscounts JSON:', parseError);
+              }
             }
             if (applicableDiscount === 0) {
               applicableDiscount = parseFloat(offer.discountValue.toString());
@@ -2091,9 +2096,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Real-time in-app + push notifications
         import('./notifications').then(({ notifyCustomerBookingRequested, notifyOwnerNewBooking }) => {
-          notifyCustomerBookingRequested(booking.id).catch(() => {});
-          notifyOwnerNewBooking(booking.id).catch(() => {});
-        }).catch(() => {});
+          notifyCustomerBookingRequested(booking.id).catch(e => console.error('Customer booking-requested notification failed:', e));
+          notifyOwnerNewBooking(booking.id).catch(e => console.error('Owner new-booking notification failed:', e));
+        }).catch(e => console.error('Failed to load notifications module:', e));
       }
       
       // Return all created bookings
@@ -5323,7 +5328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (r.slotsCreated > 0) {
             console.log(`[SlotGen] On-demand generated ${r.slotsCreated} slots for salon ${salonId}`);
           }
-        }).catch(() => {});
+        }).catch(e => console.error(`[SlotGen] On-demand generation failed for salon ${salonId}:`, e));
       }
 
       res.json(slotCounts);
@@ -5826,13 +5831,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // In-app + push notifications
       import('./notifications').then(({ notifyCustomerBookingAccepted, notifyCustomerBookingRejected, notifyCustomerRescheduleSuggested }) => {
         if (status === 'confirmed') {
-          notifyCustomerBookingAccepted(req.params.id).catch(() => {});
+          notifyCustomerBookingAccepted(req.params.id).catch(e => console.error('Booking-accepted notification failed:', e));
         } else if (status === 'cancelled') {
-          notifyCustomerBookingRejected(req.params.id).catch(() => {});
+          notifyCustomerBookingRejected(req.params.id).catch(e => console.error('Booking-rejected notification failed:', e));
         } else if (status === 'owner_suggested') {
-          notifyCustomerRescheduleSuggested(req.params.id).catch(() => {});
+          notifyCustomerRescheduleSuggested(req.params.id).catch(e => console.error('Reschedule-suggested notification failed:', e));
         }
-      }).catch(() => {});
+      }).catch(e => console.error('Failed to load notifications module:', e));
     } catch (error) {
       console.error("Error updating booking status:", error);
       res.status(500).json({ message: "Failed to update booking status" });
@@ -11076,7 +11081,7 @@ Crawl-delay: 1
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS "staff_otps_phone_idx" ON "staff_otps"("phone")`);
   } catch (e) {
-    // Table may already exist, ignore
+    console.error('Failed to ensure staff_otps table exists:', e);
   }
 
   const STAFF_JWT_SECRET = process.env.JWT_SECRET || 'sanwar-staff-secret-key-2024';

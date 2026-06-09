@@ -156,7 +156,7 @@ export async function autoGenerateSlotsForStaff(
     return allNewSlots.length;
   } catch (err) {
     console.error(`[SlotGen] Error generating slots for staff ${staffId}:`, err);
-    return 0;
+    throw err;
   }
 }
 
@@ -185,7 +185,7 @@ export async function autoGenerateSlotsForSalon(
     return { staffCount: staffList.length, slotsCreated: totalSlots };
   } catch (err) {
     console.error(`[SlotGen] Error generating slots for salon ${salonId}:`, err);
-    return { staffCount: 0, slotsCreated: 0 };
+    throw err;
   }
 }
 
@@ -220,5 +220,6 @@ export async function runDailySlotMaintenance(): Promise<void> {
     }
   } catch (err) {
     console.error('[SlotGen] Daily maintenance error:', err);
+    throw err;
   }
 }

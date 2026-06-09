@@ -74,7 +74,7 @@ export async function getBookingEmailData(bookingId: string): Promise<BookingEma
     };
   } catch (error) {
     console.error('Error fetching booking data for email:', error);
-    return null;
+    throw error;
   }
 }
 

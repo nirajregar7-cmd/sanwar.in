@@ -2217,6 +2217,7 @@ export class DatabaseStorage implements IStorage {
     console.log(`[BULK GENERATION] Processing bulk slots for salon ${salonId} from ${startDate} to ${endDate}`);
     
     let totalGenerated = 0;
+    const failedDates: string[] = [];
     const currentDate = new Date(startDate);
     const endDateObj = new Date(endDate);
 
@@ -2230,16 +2231,23 @@ export class DatabaseStorage implements IStorage {
         console.log(`[BULK GENERATION] Generated ${result.generated} slots for ${dateStr}`);
       } catch (error) {
         console.error(`[BULK GENERATION] Error generating slots for ${dateStr}:`, error);
+        failedDates.push(dateStr);
       }
       
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
+    if (failedDates.length > 0) {
+      console.error(`[BULK GENERATION] Failed to generate slots for ${failedDates.length} date(s): ${failedDates.join(', ')}`);
+    }
     console.log(`[BULK GENERATION] Completed bulk generation: ${totalGenerated} total slots created`);
     
     return {
       totalGenerated,
-      message: `Successfully generated ${totalGenerated} slots from ${startDate} to ${endDate}`
+      failedDates,
+      message: failedDates.length > 0
+        ? `Generated ${totalGenerated} slots from ${startDate} to ${endDate}, but ${failedDates.length} date(s) failed: ${failedDates.join(', ')}`
+        : `Successfully generated ${totalGenerated} slots from ${startDate} to ${endDate}`
     };
   }
 

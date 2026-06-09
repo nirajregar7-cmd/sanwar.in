@@ -268,8 +268,12 @@ export function startBookingScheduler() {
 
   // Every 6 hours: auto-generate slots for all salons (rolling 30-day coverage)
   setInterval(async () => {
-    const { runDailySlotMaintenance } = await import('./slot-auto-generator');
-    await runDailySlotMaintenance();
+    try {
+      const { runDailySlotMaintenance } = await import('./slot-auto-generator');
+      await runDailySlotMaintenance();
+    } catch (e) {
+      console.error('[SlotGen] Scheduled slot maintenance failed:', e);
+    }
   }, 6 * 60 * 60 * 1000);
   
   // Run immediately on startup (after 5s delay)
@@ -281,9 +285,13 @@ export function startBookingScheduler() {
 
   // Run slot maintenance quickly on startup — ensures ALL salons have slots from the first request
   setTimeout(async () => {
-    const { runDailySlotMaintenance } = await import('./slot-auto-generator');
-    console.log('[SlotGen] Running startup slot maintenance for all salons...');
-    await runDailySlotMaintenance();
-    console.log('[SlotGen] Startup slot maintenance complete.');
+    try {
+      const { runDailySlotMaintenance } = await import('./slot-auto-generator');
+      console.log('[SlotGen] Running startup slot maintenance for all salons...');
+      await runDailySlotMaintenance();
+      console.log('[SlotGen] Startup slot maintenance complete.');
+    } catch (e) {
+      console.error('[SlotGen] Startup slot maintenance failed:', e);
+    }
   }, 3 * 1000);
 }
