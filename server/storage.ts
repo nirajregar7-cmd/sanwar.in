@@ -95,6 +95,22 @@ import {
 import { db } from "./db";
 import { eq, and, gte, desc, asc, or, isNull, sql } from "drizzle-orm";
 
+let usersPlanColumnsStatus: "unknown" | "available" | "missing" = "unknown";
+
+async function usersPlanColumnsAvailable(): Promise<boolean> {
+  if (usersPlanColumnsStatus !== "unknown") return usersPlanColumnsStatus === "available";
+  try {
+    const result = await db.execute(
+      sql`SELECT 1 as ok FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'plan_type' LIMIT 1`,
+    );
+    const rows = (result as any)?.rows ?? result;
+    usersPlanColumnsStatus = Array.isArray(rows) && rows.length > 0 ? "available" : "missing";
+  } catch {
+    usersPlanColumnsStatus = "missing";
+  }
+  return usersPlanColumnsStatus === "available";
+}
+
 export interface IStorage {
   // User operations (required for email/password and social auth)
   getUser(id: string): Promise<User | undefined>;
@@ -285,18 +301,99 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private async getUserByEmailLegacy(email: string): Promise<User | undefined> {
+    const result = await db.execute(sql`
+      SELECT
+        id,
+        email,
+        password,
+        first_name as "firstName",
+        last_name as "lastName",
+        phone,
+        profile_image_url as "profileImageUrl",
+        user_type as "userType",
+        role,
+        is_blocked as "isBlocked",
+        is_social_auth as "isSocialAuth",
+        social_provider as "socialProvider",
+        social_id as "socialId",
+        brand_name as "brandName",
+        brand_description as "brandDescription",
+        is_brand_owner as "isBrandOwner",
+        is_active as "isActive",
+        is_verified as "isVerified",
+        'trial'::varchar as "planType",
+        NULL::timestamp as "trialStartedAt",
+        NULL::timestamp as "trialEndsAt",
+        NULL::timestamp as "planStartedAt",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM users
+      WHERE email = ${email}
+      LIMIT 1
+    `);
+    const rows = (result as any)?.rows ?? result;
+    const user = Array.isArray(rows) ? rows[0] : undefined;
+    return user as User | undefined;
+  }
+
+  private async getUserByIdLegacy(id: string): Promise<User | undefined> {
+    const result = await db.execute(sql`
+      SELECT
+        id,
+        email,
+        password,
+        first_name as "firstName",
+        last_name as "lastName",
+        phone,
+        profile_image_url as "profileImageUrl",
+        user_type as "userType",
+        role,
+        is_blocked as "isBlocked",
+        is_social_auth as "isSocialAuth",
+        social_provider as "socialProvider",
+        social_id as "socialId",
+        brand_name as "brandName",
+        brand_description as "brandDescription",
+        is_brand_owner as "isBrandOwner",
+        is_active as "isActive",
+        is_verified as "isVerified",
+        'trial'::varchar as "planType",
+        NULL::timestamp as "trialStartedAt",
+        NULL::timestamp as "trialEndsAt",
+        NULL::timestamp as "planStartedAt",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM users
+      WHERE id = ${id}
+      LIMIT 1
+    `);
+    const rows = (result as any)?.rows ?? result;
+    const user = Array.isArray(rows) ? rows[0] : undefined;
+    return user as User | undefined;
+  }
+
   // User operations
   async getUser(id: string): Promise<User | undefined> {
+    if (!(await usersPlanColumnsAvailable())) {
+      return await this.getUserByIdLegacy(id);
+    }
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
   async getUserById(id: string): Promise<User | undefined> {
+    if (!(await usersPlanColumnsAvailable())) {
+      return await this.getUserByIdLegacy(id);
+    }
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
+    if (!(await usersPlanColumnsAvailable())) {
+      return await this.getUserByEmailLegacy(email);
+    }
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }

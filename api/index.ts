@@ -61,11 +61,21 @@ app.get("/api/healthz", async (_req: Request, res: Response) => {
     // Test actual DB connectivity
     let dbOk = false;
     let dbError = "";
+    let usersColumnsOk: boolean | null = null;
+    let usersMissingColumns: string[] = [];
     try {
       const { pool } = await import("../server/db");
 
       const client = await pool.connect();
       await client.query("SELECT 1");
+      const required = ["plan_type", "trial_started_at", "trial_ends_at", "plan_started_at"];
+      const colsRes = await client.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND column_name = ANY($1::text[])`,
+        [required],
+      );
+      const present = new Set((colsRes.rows || []).map((r: any) => r.column_name));
+      usersMissingColumns = required.filter((c) => !present.has(c));
+      usersColumnsOk = usersMissingColumns.length === 0;
       client.release();
       dbOk = true;
     } catch (e: any) {
@@ -77,6 +87,8 @@ app.get("/api/healthz", async (_req: Request, res: Response) => {
         database_url_set: !!(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL),
         database_connected: dbOk,
         database_error: dbError || undefined,
+        users_required_columns_ok: usersColumnsOk,
+        users_missing_columns: usersMissingColumns.length ? usersMissingColumns : undefined,
         session_secret: !!process.env.SESSION_SECRET,
         node_env: process.env.NODE_ENV || "not set",
       },

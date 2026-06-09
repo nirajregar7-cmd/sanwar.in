@@ -324,7 +324,11 @@ export async function setupAuth(app: Express) {
       if (userType === 'salon_owner' || userType === 'brand_owner') {
         const trialStartedAt = new Date();
         const trialEndsAt = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
-        await db.update(users_table).set({ planType: 'trial', trialStartedAt, trialEndsAt }).where(eq(users_table.id, user.id));
+        try {
+          await db.update(users_table).set({ planType: 'trial', trialStartedAt, trialEndsAt }).where(eq(users_table.id, user.id));
+        } catch (e: any) {
+          console.error("Trial fields update failed:", e?.message || e);
+        }
       }
 
       // Send welcome email (async, don't block registration)
