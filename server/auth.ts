@@ -172,9 +172,21 @@ async function ensureSessionTable() {
   }
 }
 
+async function ensureUserPlanColumns() {
+  try {
+    await sessionPool.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "plan_type" varchar DEFAULT 'trial';`);
+    await sessionPool.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "trial_started_at" timestamp;`);
+    await sessionPool.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "trial_ends_at" timestamp;`);
+    await sessionPool.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "plan_started_at" timestamp;`);
+  } catch (err) {
+    console.error("Users plan columns check failed:", (err as any)?.message || err);
+  }
+}
+
 export async function setupAuth(app: Express) {
   // Ensure the session table exists before creating the store
   await ensureSessionTable();
+  await ensureUserPlanColumns();
 
   const PostgresSessionStore = connectPg(session);
   const sessionStore = new PostgresSessionStore({ 
