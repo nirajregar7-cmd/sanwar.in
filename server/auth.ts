@@ -252,9 +252,18 @@ export async function setupAuth(app: Express) {
   app.post("/api/register", async (req, res, next) => {
     try {
       const { email, password, firstName, lastName, phone, userType, referralCode } = req.body;
+      const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+      const normalizedPassword = typeof password === "string" ? password : "";
+      const normalizedFirstName = typeof firstName === "string" ? firstName.trim() : "";
+      const normalizedLastName = typeof lastName === "string" ? lastName.trim() : "";
+      const normalizedPhone = typeof phone === "string" ? phone.trim() : "";
+      const normalizedReferralCode =
+        typeof referralCode === "string" && referralCode.trim()
+          ? referralCode.trim().toUpperCase()
+          : "";
 
       // Validate input
-      if (!email || !password || !firstName || !phone || !userType) {
+      if (!normalizedEmail || !normalizedPassword || !normalizedFirstName || !normalizedPhone || !userType) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
@@ -262,20 +271,20 @@ export async function setupAuth(app: Express) {
         return res.status(400).json({ error: "Invalid user type" });
       }
 
-      if (password.length < 6) {
+      if (normalizedPassword.length < 6) {
         return res.status(400).json({ error: "Password must be at least 6 characters" });
       }
 
       // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
+      const existingUser = await storage.getUserByEmail(normalizedEmail);
       if (existingUser) {
         return res.status(400).json({ error: "Email already registered" });
       }
 
       // Validate referral code if provided
       let referralRecord: any = null;
-      if (referralCode) {
-        referralRecord = await storage.getReferralByCode(referralCode);
+      if (normalizedReferralCode) {
+        referralRecord = await storage.getReferralByCode(normalizedReferralCode);
         if (!referralRecord) {
           return res.status(400).json({ error: "Invalid referral code" });
         }
@@ -285,13 +294,13 @@ export async function setupAuth(app: Express) {
       }
 
       // Create user
-      const hashedPassword = await hashPassword(password);
+      const hashedPassword = await hashPassword(normalizedPassword);
       const user = await storage.createUser({
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
-        firstName,
-        lastName,
-        phone,
+        firstName: normalizedFirstName,
+        lastName: normalizedLastName,
+        phone: normalizedPhone,
         userType,
         profileImageUrl: null,
       });
@@ -349,6 +358,10 @@ export async function setupAuth(app: Express) {
 
   // Login route
   app.post("/api/login", (req, res, next) => {
+    if (typeof req.body?.email === "string") {
+      req.body.email = req.body.email.trim().toLowerCase();
+    }
+
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) {
         return next(err);

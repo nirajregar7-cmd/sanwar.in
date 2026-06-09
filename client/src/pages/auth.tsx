@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,6 +50,19 @@ export default function AuthPage() {
     return urlParams.get("redirect") || "/";
   };
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const referralFromUrl = urlParams.get("ref") || urlParams.get("referralCode");
+
+    if (referralFromUrl) {
+      setActiveTab("signup");
+      setFormData((prev) => ({
+        ...prev,
+        referralCode: referralFromUrl.trim().toUpperCase(),
+      }));
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -57,7 +70,9 @@ export default function AuthPage() {
 
     try {
       if (activeTab === "signin") {
-        if (!formData.email || !formData.password) {
+        const normalizedEmail = formData.email.trim().toLowerCase();
+
+        if (!normalizedEmail || !formData.password) {
           setError("Email and password are required");
           return;
         }
@@ -67,7 +82,7 @@ export default function AuthPage() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            email: formData.email,
+            email: normalizedEmail,
             password: formData.password,
           }),
         });
@@ -97,19 +112,30 @@ export default function AuthPage() {
           setError("Mobile number is required");
           return;
         }
+        if (!formData.email.trim()) {
+          setError("Email is required");
+          return;
+        }
+        if (!formData.password) {
+          setError("Password is required");
+          return;
+        }
+
+        const normalizedEmail = formData.email.trim().toLowerCase();
+        const normalizedReferralCode = formData.referralCode.trim().toUpperCase();
 
         const response = await fetch("/api/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            email: formData.email,
+            email: normalizedEmail,
             password: formData.password,
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            phone: formData.mobileNumber,
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            phone: formData.mobileNumber.trim(),
             userType: userType,
-            referralCode: formData.referralCode,
+            referralCode: normalizedReferralCode,
           }),
         });
 
@@ -146,16 +172,20 @@ export default function AuthPage() {
   };
 
   const handleValidateReferralCode = async () => {
-    if (!formData.referralCode.trim()) {
+    const normalizedReferralCode = formData.referralCode.trim().toUpperCase();
+
+    if (!normalizedReferralCode) {
       setReferralCodeStatus({ status: "invalid", message: "Please enter a referral code" });
       return;
     }
+
+    setFormData((prev) => ({ ...prev, referralCode: normalizedReferralCode }));
     setReferralCodeStatus({ status: "validating", message: "Checking..." });
     try {
       const response = await fetch("/api/validate-referral", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: formData.referralCode.trim() }),
+        body: JSON.stringify({ code: normalizedReferralCode }),
       });
       const data = await response.json();
       if (response.ok && data.valid) {

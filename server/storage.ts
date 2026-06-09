@@ -297,7 +297,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const normalizedEmail = email.trim().toLowerCase();
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`lower(${users.email}) = ${normalizedEmail}`);
     return user;
   }
 
@@ -1220,7 +1224,11 @@ export class DatabaseStorage implements IStorage {
 
   // Referral operations
   async getReferralByCode(referralCode: string): Promise<Referral | undefined> {
-    const [referral] = await db.select().from(referrals).where(eq(referrals.referralCode, referralCode));
+    const normalizedCode = referralCode.trim().toUpperCase();
+    const [referral] = await db
+      .select()
+      .from(referrals)
+      .where(eq(referrals.referralCode, normalizedCode));
     return referral;
   }
 
