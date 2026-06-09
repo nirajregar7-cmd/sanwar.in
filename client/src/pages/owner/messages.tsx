@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { timeAgo, formatMessageTime } from "@/lib/formatters";
 import { useQuery as useQ } from "@tanstack/react-query";
 
 interface Conversation {
@@ -34,20 +35,6 @@ interface Salon {
   id: string;
   name: string;
   imageUrl?: string;
-}
-
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return "now";
-  if (min < 60) return `${min}m`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h`;
-  return `${Math.floor(hr / 24)}d`;
-}
-
-function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function OwnerMessages() {
@@ -199,7 +186,7 @@ export default function OwnerMessages() {
                         {msg.message}
                       </div>
                       <span className="text-[10px] text-gray-400 mt-1 px-1">
-                        {formatTime(msg.createdAt)}
+                        {formatMessageTime(msg.createdAt)}
                       </span>
                     </div>
                   </div>

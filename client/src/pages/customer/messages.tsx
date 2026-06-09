@@ -7,6 +7,7 @@ import { ArrowLeft, Send, MessageSquare, Scissors, Clock, Search } from "lucide-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { timeAgo, formatMessageTime } from "@/lib/formatters";
 
 interface Conversation {
   salon_id: string;
@@ -27,22 +28,6 @@ interface ChatMessage {
   message: string;
   isRead: boolean;
   createdAt: string;
-}
-
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return "now";
-  if (min < 60) return `${min}m`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h`;
-  const d = Math.floor(hr / 24);
-  if (d < 7) return `${d}d`;
-  return new Date(dateStr).toLocaleDateString([], { month: "short", day: "numeric" });
-}
-
-function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function CustomerMessages() {
@@ -189,7 +174,7 @@ export default function CustomerMessages() {
                         {msg.message}
                       </div>
                       <span className="text-[10px] text-gray-400 mt-1 px-1">
-                        {formatTime(msg.createdAt)}
+                        {formatMessageTime(msg.createdAt)}
                       </span>
                     </div>
                   </div>

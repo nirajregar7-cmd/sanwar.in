@@ -292,6 +292,7 @@ import { WorkingHoursForm } from "@/components/WorkingHoursForm";
 import { ReplyForm } from "@/components/ReplyForm";
 import { MoodRatingDisplay } from "@/components/MoodRatingSelector";
 import HireStaffSection from "@/components/HireStaffSection";
+import { formatTimeOfDay } from "@/lib/formatters";
 
 const salonSchema = z.object({
   name: z.string().min(1, "Salon name is required"),
@@ -1192,22 +1193,13 @@ export default function OwnerDashboard() {
       return { isOpen: false, hours: 'Closed' };
     }
     
-    const formatTime = (time: string) => {
-      if (!time) return '';
-      const [hours, minutes] = time.split(':');
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-      return `${displayHour}:${minutes} ${ampm}`;
-    };
-    
     let hoursText = '';
     if (daySchedule.openTime && daySchedule.closeTime) {
-      hoursText = `${formatTime(daySchedule.openTime)} - ${formatTime(daySchedule.closeTime)}`;
+      hoursText = `${formatTimeOfDay(daySchedule.openTime)} - ${formatTimeOfDay(daySchedule.closeTime)}`;
       
       // Add break time if available
       if (daySchedule.breakStartTime && daySchedule.breakEndTime) {
-        hoursText += ` (Break: ${formatTime(daySchedule.breakStartTime)} - ${formatTime(daySchedule.breakEndTime)})`;
+        hoursText += ` (Break: ${formatTimeOfDay(daySchedule.breakStartTime)} - ${formatTimeOfDay(daySchedule.breakEndTime)})`;
       }
     }
     

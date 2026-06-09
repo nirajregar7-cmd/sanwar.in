@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Star, Clock, MapPin, Percent, CheckCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { Salon, SalonOffer } from "@shared/schema";
+import { formatCountdown } from "@/lib/formatters";
 
 interface SalonCardProps {
   salon: Salon & { distance?: number; primaryImageUrl?: string | null };
@@ -42,12 +43,7 @@ export default function SalonCard({ salon }: SalonCardProps) {
     }
   }, [salon.queueWaitTime]);
   
-  // Format seconds to MM:SS
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  const formatTime = formatCountdown;
   // Fetch salon offers
   const { data: offers = [], isLoading, error } = useQuery<SalonOffer[]>({
     queryKey: [`/api/salons/${salon.id}/offers`],

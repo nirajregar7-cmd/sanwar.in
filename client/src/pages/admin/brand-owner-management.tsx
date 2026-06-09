@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatDateShort } from "@/lib/formatters";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -310,7 +311,7 @@ export default function BrandOwnerManagement() {
                         <div>
                           <span className="text-gray-600">Joined:</span>
                           <p className="font-medium">
-                            {new Date(brandOwner.createdAt).toLocaleDateString()}
+                            {formatDateShort(brandOwner.createdAt)}
                           </p>
                         </div>
                         <div>
@@ -440,11 +441,11 @@ export default function BrandOwnerManagement() {
                     </div>
                     <div>
                       <Label className="text-sm text-gray-600">Member Since</Label>
-                      <p className="font-medium">{new Date(selectedBrandOwner.createdAt).toLocaleDateString()}</p>
+                      <p className="font-medium">{formatDateShort(selectedBrandOwner.createdAt)}</p>
                     </div>
                     <div>
                       <Label className="text-sm text-gray-600">Last Updated</Label>
-                      <p className="font-medium">{new Date(selectedBrandOwner.updatedAt).toLocaleDateString()}</p>
+                      <p className="font-medium">{formatDateShort(selectedBrandOwner.updatedAt)}</p>
                     </div>
                   </CardContent>
                 </Card>

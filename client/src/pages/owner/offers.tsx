@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatDateShort } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -352,7 +353,7 @@ export default function OffersPage() {
                     <div className="flex items-center gap-2 text-sm">
                       <Calendar className="w-4 h-4" />
                       <span data-testid={`text-offer-validity-${offer.id}`}>
-                        {new Date(offer.validFrom).toLocaleDateString()} - {new Date(offer.validUntil).toLocaleDateString()}
+                        {formatDateShort(offer.validFrom)} - {formatDateShort(offer.validUntil)}
                       </span>
                     </div>
                     

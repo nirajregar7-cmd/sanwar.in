@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { formatCountdown } from "@/lib/formatters";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -206,11 +207,7 @@ export default function EmailVerification() {
     }
   }, [step, timeLeft]);
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+  const formatTime = formatCountdown;
 
   const userTypeDisplay = {
     salon_owner: "Salon Owner",
