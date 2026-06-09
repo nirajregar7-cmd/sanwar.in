@@ -1,42 +1,36 @@
-// Vercel build script — emits the Build Output API (.vercel/output).
+// Vercel build script.
 //
-// The API is shipped as a single, self-contained serverless function:
-// esbuild bundles server/vercel-entry.ts together with the entire server/ +
-// shared/ graph (resolving the @shared/* alias) into one ESM file. Bundling
-// into a single file avoids Node's ESM extension-resolution errors that occur
-// when the function is transpiled file-by-file in a "type": "module" package.
+// This build generates:
+// 1. `dist/public` for the Vite frontend
+// 2. `api/_handler.mjs`, a single-file bundled serverless handler consumed by
+//    the top-level Vercel API wrappers in `api/`
 //
-// The entry lives in server/ (not /api) on purpose: Vercel always builds files
-// in a top-level /api directory as its own functions, which would override the
-// Build Output API function defined here.
-//
-// The Vite frontend is emitted as static assets, and config.json wires up
-// SPA fallback + /api routing to the function.
+// Bundling the handler avoids Node ESM extension-resolution failures such as:
+// "Cannot find module '/var/task/server/routes' imported from /var/task/api/index.js"
+// when Vercel transpiles a multi-file TypeScript backend file-by-file.
 
 import { build } from 'esbuild';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { mkdirSync, rmSync, cpSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
-const outDir = path.join(root, '.vercel', 'output');
-const funcDir = path.join(outDir, 'functions', 'api', 'index.func');
-const staticDir = path.join(outDir, 'static');
+const apiDir = path.join(root, 'api');
 
-console.log('[vercel-build] Cleaning .vercel/output ...');
-rmSync(outDir, { recursive: true, force: true });
-mkdirSync(funcDir, { recursive: true });
+console.log('[vercel-build] Preparing bundled API handler ...');
+mkdirSync(apiDir, { recursive: true });
+rmSync(path.join(apiDir, '_handler.mjs'), { force: true });
 
-console.log('[vercel-build] Bundling server/vercel-entry.ts -> serverless function ...');
+console.log('[vercel-build] Bundling server/vercel-entry.ts -> api/_handler.mjs ...');
 await build({
   entryPoints: [path.join(root, 'server/vercel-entry.ts')],
   bundle: true,
   platform: 'node',
   format: 'esm',
   target: 'node20',
-  outfile: path.join(funcDir, 'index.mjs'),
+  outfile: path.join(apiDir, '_handler.mjs'),
   packages: 'bundle',
   sourcemap: false,
   logLevel: 'info',
@@ -51,48 +45,8 @@ await build({
     js: "import { createRequire as __vercelCreateRequire } from 'node:module'; const require = __vercelCreateRequire(import.meta.url);",
   },
 });
-console.log('[vercel-build] API bundled -> .vercel/output/functions/api/index.func');
-
-writeFileSync(
-  path.join(funcDir, 'package.json'),
-  JSON.stringify({ type: 'module' }, null, 2),
-);
-writeFileSync(
-  path.join(funcDir, '.vc-config.json'),
-  JSON.stringify(
-    {
-      handler: 'index.mjs',
-      runtime: 'nodejs22.x',
-      launcherType: 'Nodejs',
-      shouldAddHelpers: true,
-      maxDuration: 30,
-    },
-    null,
-    2,
-  ),
-);
+console.log('[vercel-build] API bundled -> api/_handler.mjs');
 
 console.log('[vercel-build] Running vite build ...');
 execSync('npx vite build', { stdio: 'inherit', cwd: root });
-
-console.log('[vercel-build] Assembling static output ...');
-mkdirSync(staticDir, { recursive: true });
-cpSync(path.join(root, 'dist', 'public'), staticDir, { recursive: true });
-
-writeFileSync(
-  path.join(outDir, 'config.json'),
-  JSON.stringify(
-    {
-      version: 3,
-      routes: [
-        { handle: 'filesystem' },
-        { src: '^/api(/.*)?$', dest: '/api' },
-        { src: '/(.*)', dest: '/index.html' },
-      ],
-    },
-    null,
-    2,
-  ),
-);
-
-console.log('[vercel-build] Build Output API ready -> .vercel/output');
+console.log('[vercel-build] Frontend built -> dist/public');

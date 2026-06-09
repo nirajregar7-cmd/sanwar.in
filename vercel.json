@@ -1,7 +1,13 @@
 {
   "version": 2,
   "buildCommand": "node ./scripts/vercel-build.mjs",
-  "framework": null,
+  "framework": "vite",
+  "outputDirectory": "dist/public",
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ],
   "env": {
     "NODE_ENV": "production"
   }
