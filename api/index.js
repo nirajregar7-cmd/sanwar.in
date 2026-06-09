@@ -1,1 +1,3 @@
-export { default } from "./_handler.mjs";
+import handler from "./_handler.mjs";
+
+export default handler;
