@@ -57,6 +57,77 @@ export interface AvailableSlot {
   canAccommodateService: boolean;
 }
 
+// Exported pure helpers for testability
+export function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+export function minutesToTime(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
+
+export function generateSlotsForTimeRange(
+  startTime: string,
+  endTime: string,
+  slotDuration: number,
+  compatibleServices: string[],
+  breakStart?: string,
+  breakEnd?: string
+): Omit<TimeSlot, 'staffId'>[] {
+  const slots: Omit<TimeSlot, 'staffId'>[] = [];
+
+  const start = timeToMinutes(startTime);
+  const end = timeToMinutes(endTime);
+  const breakStartMin = breakStart ? timeToMinutes(breakStart) : null;
+  const breakEndMin = breakEnd ? timeToMinutes(breakEnd) : null;
+
+  for (let currentTime = start; currentTime < end; currentTime += slotDuration) {
+    const slotStart = minutesToTime(currentTime);
+    const slotEnd = minutesToTime(currentTime + slotDuration);
+
+    const isBreakTime = breakStartMin !== null && breakEndMin !== null &&
+      currentTime >= breakStartMin && currentTime < breakEndMin;
+
+    slots.push({
+      id: `slot-${slotStart}-${slotEnd}`,
+      startTime: slotStart,
+      endTime: slotEnd,
+      isAvailable: !isBreakTime,
+      slotType: isBreakTime ? 'break' : 'regular',
+      compatibleServices: isBreakTime ? [] : compatibleServices,
+    });
+  }
+
+  return slots;
+}
+
+export function findConsecutiveSlots(slots: TimeSlot[], slotsNeeded: number, preferredStartTime?: string): TimeSlot[][] {
+  const availableSlots = slots.filter(slot => slot.isAvailable && slot.slotType === 'regular');
+  const consecutiveGroups: TimeSlot[][] = [];
+
+  for (let i = 0; i <= availableSlots.length - slotsNeeded; i++) {
+    const group = availableSlots.slice(i, i + slotsNeeded);
+
+    const isConsecutive = group.every((slot, index) => {
+      if (index === 0) return true;
+      const prevEndTime = timeToMinutes(group[index - 1].endTime);
+      const currentStartTime = timeToMinutes(slot.startTime);
+      return prevEndTime === currentStartTime;
+    });
+
+    if (isConsecutive) {
+      if (!preferredStartTime || group[0].startTime >= preferredStartTime) {
+        consecutiveGroups.push(group);
+      }
+    }
+  }
+
+  return consecutiveGroups;
+}
+
 export class SmartSchedulingService {
   constructor(private storage: any) {}
 
@@ -139,7 +210,7 @@ export class SmartSchedulingService {
   }
 
   /**
-   * Generate slots for a specific time range
+   * Generate slots for a specific time range (delegates to standalone function)
    */
   private generateSlotsForTimeRange(
     startTime: string,
@@ -149,32 +220,7 @@ export class SmartSchedulingService {
     breakStart?: string,
     breakEnd?: string
   ): Omit<TimeSlot, 'staffId'>[] {
-    const slots: Omit<TimeSlot, 'staffId'>[] = [];
-    
-    const start = this.timeToMinutes(startTime);
-    const end = this.timeToMinutes(endTime);
-    const breakStartMin = breakStart ? this.timeToMinutes(breakStart) : null;
-    const breakEndMin = breakEnd ? this.timeToMinutes(breakEnd) : null;
-
-    for (let currentTime = start; currentTime < end; currentTime += slotDuration) {
-      const slotStart = this.minutesToTime(currentTime);
-      const slotEnd = this.minutesToTime(currentTime + slotDuration);
-
-      // Check if this slot overlaps with break time
-      const isBreakTime = breakStartMin !== null && breakEndMin !== null &&
-        currentTime >= breakStartMin && currentTime < breakEndMin;
-
-      slots.push({
-        id: `slot-${slotStart}-${slotEnd}`,
-        startTime: slotStart,
-        endTime: slotEnd,
-        isAvailable: !isBreakTime,
-        slotType: isBreakTime ? 'break' : 'regular',
-        compatibleServices: isBreakTime ? [] : compatibleServices,
-      });
-    }
-
-    return slots;
+    return generateSlotsForTimeRange(startTime, endTime, slotDuration, compatibleServices, breakStart, breakEnd);
   }
 
   /**
@@ -398,42 +444,17 @@ export class SmartSchedulingService {
     }
   }
 
-  // Helper methods
+  // Helper methods (delegate to standalone exported functions)
   private timeToMinutes(time: string): number {
-    const [hours, minutes] = time.split(':').map(Number);
-    return hours * 60 + minutes;
+    return timeToMinutes(time);
   }
 
   private minutesToTime(minutes: number): string {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    return minutesToTime(minutes);
   }
 
   private findConsecutiveSlots(slots: TimeSlot[], slotsNeeded: number, preferredStartTime?: string): TimeSlot[][] {
-    const availableSlots = slots.filter(slot => slot.isAvailable && slot.slotType === 'regular');
-    const consecutiveGroups: TimeSlot[][] = [];
-
-    for (let i = 0; i <= availableSlots.length - slotsNeeded; i++) {
-      const group = availableSlots.slice(i, i + slotsNeeded);
-      
-      // Check if slots are truly consecutive
-      const isConsecutive = group.every((slot, index) => {
-        if (index === 0) return true;
-        const prevEndTime = this.timeToMinutes(group[index - 1].endTime);
-        const currentStartTime = this.timeToMinutes(slot.startTime);
-        return prevEndTime === currentStartTime;
-      });
-
-      if (isConsecutive) {
-        // If preferred start time is specified, prioritize slots starting at or after that time
-        if (!preferredStartTime || group[0].startTime >= preferredStartTime) {
-          consecutiveGroups.push(group);
-        }
-      }
-    }
-
-    return consecutiveGroups;
+    return findConsecutiveSlots(slots, slotsNeeded, preferredStartTime);
   }
 
   private async saveStaffTimeSlots(staffId: string, date: string, slots: TimeSlot[]): Promise<void> {

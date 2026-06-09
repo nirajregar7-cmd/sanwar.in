@@ -116,7 +116,7 @@ export async function sendNotification(payload: NotificationPayload) {
 }
 
 // Check if notification type is enabled in settings
-function checkNotificationTypeEnabled(settings: any, type: string): boolean {
+export function checkNotificationTypeEnabled(settings: any, type: string): boolean {
   switch (type) {
     case 'booking_confirmation':
       return settings.bookingConfirmation;
