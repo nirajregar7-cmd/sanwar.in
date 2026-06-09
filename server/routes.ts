@@ -54,7 +54,7 @@ const upload = multer({
 });
 
 // Helper function to get the correct base URL
-function getBaseUrl(requestHost?: string): string {
+export function getBaseUrl(requestHost?: string): string {
   if (process.env.BASE_URL) {
     return process.env.BASE_URL;
   }
@@ -69,7 +69,7 @@ function getBaseUrl(requestHost?: string): string {
 }
 
 // Helper function to generate time slots for a specific date
-function generateTimeSlotsForDate(date: string, openingTime: string, closingTime: string, slotDuration: number, breakStartTime: string, breakEndTime: string) {
+export function generateTimeSlotsForDate(date: string, openingTime: string, closingTime: string, slotDuration: number, breakStartTime: string, breakEndTime: string) {
   const slots = [];
   const [openHour, openMin] = openingTime.split(':').map(Number);
   const [closeHour, closeMin] = closingTime.split(':').map(Number);

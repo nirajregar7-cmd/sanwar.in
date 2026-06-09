@@ -6,3 +6,4 @@ vite.config.ts.*
 *.tar.gz
 server/routes.js
 server/*.js.map
+.vercel

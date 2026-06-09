@@ -16,31 +16,31 @@ import { workingHours, staff, timeSlots, salons } from '../shared/schema';
 const SLOT_DURATION_MINUTES = 30;
 const DAYS_AHEAD = 30;
 
-function toMinutes(time: string): number {
+export function toMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number);
   return h * 60 + m;
 }
 
-function toTimeStr(minutes: number): string {
+export function toTimeStr(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 }
 
-function addDays(base: Date, n: number): Date {
+export function addDays(base: Date, n: number): Date {
   const d = new Date(base);
   d.setDate(d.getDate() + n);
   return d;
 }
 
-function dateStr(d: Date): string {
+export function dateStr(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
 /**
  * Generate 30-min slot objects for a single day based on open/close/break times.
  */
-function buildSlots(
+export function buildSlots(
   date: string,
   openTime: string,
   closeTime: string,

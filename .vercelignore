@@ -34,8 +34,3 @@ bower_components
 .awcache
 .tmp
 .cache
-
-
-# Exclude the TS source of the serverless function — the build step
-# bundles api/index.ts into api/index.js, which is what Vercel runs.
-api/index.ts
