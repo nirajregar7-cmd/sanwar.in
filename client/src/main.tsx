@@ -5,7 +5,30 @@ import "./index.css";
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    if (import.meta.env.PROD) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      return;
+    }
+
+    // Keep Vite development free of stale PWA caches. A cached service worker can
+    // serve old module files and leave the app on a blank white screen.
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) => registrations.forEach((registration) => registration.unregister()))
+      .catch(() => {});
+
+    if ('caches' in window) {
+      caches
+        .keys()
+        .then((cacheNames) =>
+          Promise.all(
+            cacheNames
+              .filter((cacheName) => cacheName.startsWith('sanwar-'))
+              .map((cacheName) => caches.delete(cacheName)),
+          ),
+        )
+        .catch(() => {});
+    }
   });
 }
 
