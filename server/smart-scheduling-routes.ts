@@ -1,6 +1,6 @@
 import type { Express } from "express";
-import { SmartSchedulingService } from "./smart-scheduling";
-import { storage } from "./storage";
+import { SmartSchedulingService } from "./smart-scheduling.js";
+import { storage } from "./storage.js";
 
 export function registerSmartSchedulingRoutes(app: Express) {
   const smartScheduling = new SmartSchedulingService(storage);

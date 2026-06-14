@@ -8,7 +8,7 @@ import {
   services,
   bookings,
   scheduleTemplates,
-} from '../shared/schema';
+} from '../shared/schema.js';
 
 export interface StaffScheduleConfig {
   staffId: string;

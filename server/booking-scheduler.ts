@@ -1,20 +1,20 @@
-import { bookings, users, notificationHistory } from '../shared/schema';
+import { bookings, users, notificationHistory } from '../shared/schema.js';
 import { eq, and, gte, lte, lt, desc, sql } from 'drizzle-orm';
 import { 
   sendBookingReminderEmail, 
   sendBookingCompletionEmail, 
   getBookingNotificationData 
-} from './email-notifications';
+} from './email-notifications.js';
 import {
   notifyCustomerAutoCancel,
   notifyCustomer30MinReminder,
   notifyReEngagement,
-} from './notifications';
+} from './notifications.js';
 
 // Auto-cancel pending bookings that haven't been responded to in 3 minutes
 export async function checkAndAutoCancelPendingBookings() {
   try {
-    const { db } = (await import('./storage')).storage;
+    const { db } = (await import('./storage.js')).storage;
     
     const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
     
@@ -53,7 +53,7 @@ export async function checkAndAutoCancelPendingBookings() {
 // Check for confirmed bookings starting in 25–35 minutes and send 30-min push reminder
 export async function checkAndSend30MinReminders() {
   try {
-    const { db } = (await import('./storage')).storage;
+    const { db } = (await import('./storage.js')).storage;
     
     const now = new Date();
     const in25Min = new Date(now.getTime() + 25 * 60 * 1000);
@@ -93,7 +93,7 @@ export async function checkAndSend30MinReminders() {
 // Check for bookings that need 2-hour reminders (email)
 export async function checkAndSendReminders() {
   try {
-    const { db } = (await import('./storage')).storage;
+    const { db } = (await import('./storage.js')).storage;
     
     const now = new Date();
     const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
@@ -130,7 +130,7 @@ export async function checkAndSendReminders() {
 // Check for completed bookings and send completion emails
 export async function checkAndSendCompletionEmails() {
   try {
-    const { db } = (await import('./storage')).storage;
+    const { db } = (await import('./storage.js')).storage;
     
     const now = new Date();
     const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
@@ -172,7 +172,7 @@ export async function checkAndSendCompletionEmails() {
 // Max 1-2 times per week per user
 export async function checkAndSendReEngagement() {
   try {
-    const { db } = (await import('./storage')).storage;
+    const { db } = (await import('./storage.js')).storage;
 
     const fourDaysAgo = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -268,7 +268,7 @@ export function startBookingScheduler() {
 
   // Every 6 hours: auto-generate slots for all salons (rolling 30-day coverage)
   setInterval(async () => {
-    const { runDailySlotMaintenance } = await import('./slot-auto-generator');
+    const { runDailySlotMaintenance } = await import('./slot-auto-generator.js');
     await runDailySlotMaintenance();
   }, 6 * 60 * 60 * 1000);
   
@@ -281,7 +281,7 @@ export function startBookingScheduler() {
 
   // Run slot maintenance quickly on startup — ensures ALL salons have slots from the first request
   setTimeout(async () => {
-    const { runDailySlotMaintenance } = await import('./slot-auto-generator');
+    const { runDailySlotMaintenance } = await import('./slot-auto-generator.js');
     console.log('[SlotGen] Running startup slot maintenance for all salons...');
     await runDailySlotMaintenance();
     console.log('[SlotGen] Startup slot maintenance complete.');

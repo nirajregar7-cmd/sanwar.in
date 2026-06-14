@@ -1,5 +1,5 @@
 import webpush from 'web-push';
-import { db } from './db';
+import { db } from './db.js';
 import { 
   notificationSettings, 
   notificationHistory, 
@@ -234,7 +234,7 @@ export async function sendEmailNotification(payload: NotificationPayload) {
     }
 
     // Import email service
-    const { sendEmail } = await import('./emailService');
+    const { sendEmail } = await import('./emailService.js');
     
     // Send the email
     const emailSent = await sendEmail({
@@ -287,7 +287,7 @@ export async function sendSMSNotification(payload: NotificationPayload) {
     }
 
     // Import WhatsApp/SMS service
-    const { sendWhatsAppMessage } = await import('./whatsapp');
+    const { sendWhatsAppMessage } = await import('./whatsapp.js');
     
     // Create concise SMS message (no HTML)
     const smsMessage = payload.type === 'booking_confirmation' 
@@ -450,7 +450,7 @@ export async function sendSalonOwnerBookingNotification(bookingId: string) {
     }
 
     // Import the rich email template
-    const { sendSalonOwnerBookingEmail } = await import('./email-notifications');
+    const { sendSalonOwnerBookingEmail } = await import('./email-notifications.js');
     
     // Send rich HTML email to salon owner
     const emailData = {
@@ -544,7 +544,7 @@ export async function sendBookingConfirmationNotification(bookingId: string) {
     const [customer] = await db.select().from(users).where(eq(users.id, booking.customerId ?? ''));
     
     // Import email service for rich HTML emails
-    const { generateBookingConfirmationEmail } = await import('./emailService');
+    const { generateBookingConfirmationEmail } = await import('./emailService.js');
     
     // Generate rich HTML email content
     const emailHTML = generateBookingConfirmationEmail(
@@ -617,7 +617,7 @@ export async function sendBookingCancellationNotification(bookingId: string) {
     const [customer] = await db.select().from(users).where(eq(users.id, booking.customerId ?? ''));
     
     // Import email service for rich HTML emails
-    const { generateBookingCancellationEmail } = await import('./emailService');
+    const { generateBookingCancellationEmail } = await import('./emailService.js');
     
     // Generate rich HTML email content
     const emailHTML = generateBookingCancellationEmail(
@@ -985,7 +985,7 @@ export async function notifyFollowersNewOffer(offerId: string, salonId: string) 
     const body = `${salon.name} is offering ${discountText} — ${offer.title}. Book now before it expires!`;
     const actionUrl = `/salon/${salonId}`;
 
-    const { sendEmail } = await import('./emailService');
+    const { sendEmail } = await import('./emailService.js');
 
     // Send push + in-app + email to each follower
     await Promise.all(

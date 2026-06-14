@@ -7,29 +7,29 @@ import multer from "multer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./auth";
+import { storage } from "./storage.js";
+import { setupAuth, isAuthenticated } from "./auth.js";
 import {
   ObjectStorageService,
   ObjectNotFoundError,
   objectStorageClient,
-} from "./objectStorage";
-import { db } from "./db";
+} from "./objectStorage.js";
+import { db } from "./db.js";
 import { platformStats } from "@shared/schema";
-import { ObjectPermission } from "./objectAcl";
+import { ObjectPermission } from "./objectAcl.js";
 import { insertSalonSchema, insertServiceSchema, insertWorkingHoursSchema, insertTimeSlotSchema, insertBookingSchema, insertWalkInBookingSchema, insertReviewSchema, insertPasswordResetOtpSchema, insertEmailVerificationOtpSchema, insertFeedbackSchema, insertHelpTicketSchema, insertHelpTicketMessageSchema, insertSalonFacilitySchema, insertSalonProductSchema, insertEmergencyWaitlistSchema, insertSalonEmergencyConfigSchema, insertEmergencySlotSchema, insertSalonOfferSchema, insertSalonOfferUsageSchema, insertProfileVisitSchema, insertSalonOwnerOtpSchema, insertPaymentOrderSchema, insertUpcomingFeatureVideoSchema, salons, users, bookings, services, serviceCategories, staff, reviews, workingHours, timeSlots, salonOwnerAccounts, revenueShares, notificationSettings, notificationHistory, pushSubscriptions, referrals, referralMilestones, freeBookingCredits, feedback, helpTickets, helpTicketMessages, salonFacilities, salonProducts, brandOffers, offerUsages, brandMessages, emailVerificationOtps, staffServices, staffWorkingHours, salonOffers, salonOfferUsage, profileVisits, salonMedia, salonOwnerOtps, staffOtps, paymentOrders, faqs, sanwarDiscountCards, upcomingFeatureVideos, salonChats, salonFollowers, staffRegistrations, staffJobOffers, customerShowcase, reviewReplies } from "@shared/schema";
-import { sendBookingConfirmationNotification, sendSalonOwnerBookingNotification, notifyFollowersNewOffer } from "./notifications";
-import { sendWelcomeEmail, testEmailConnection, sendDiscountCardEmail } from "./welcomeEmail";
-import { sendEmailVerificationOtp } from "./emailService";
+import { sendBookingConfirmationNotification, sendSalonOwnerBookingNotification, notifyFollowersNewOffer } from "./notifications.js";
+import { sendWelcomeEmail, testEmailConnection, sendDiscountCardEmail } from "./welcomeEmail.js";
+import { sendEmailVerificationOtp } from "./emailService.js";
 import { eq, desc, isNotNull, sql, count, and, or, not, exists, like, asc, inArray, gte, lte, isNull } from "drizzle-orm";
 // All payment processing now handled by Cashfree
-import { createCashfreeOrder, verifyCashfreePayment, verifyCashfreeWebhookSignature } from "./cashfree-payment";
+import { createCashfreeOrder, verifyCashfreePayment, verifyCashfreeWebhookSignature } from "./cashfree-payment.js";
 import { calculateRevenueShare } from "@shared/revenue";
-import { sendPasswordResetOTP, generateOTP, sendWhatsAppMessage } from "./whatsapp";
+import { sendPasswordResetOTP, generateOTP, sendWhatsAppMessage } from "./whatsapp.js";
 import jwt from "jsonwebtoken";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { setupSEORoutes } from "./seoRoutes";
+import { setupSEORoutes } from "./seoRoutes.js";
 
 const scryptAsync = promisify(scrypt);
 
@@ -112,6 +112,18 @@ function generateTimeSlotsForDate(date: string, openingTime: string, closingTime
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.get("/api/healthz", (_req, res) => {
+    res.json({
+      status: "ok",
+      env: {
+        database_url_set: !!(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL),
+        session_secret: !!process.env.SESSION_SECRET,
+        node_env: process.env.NODE_ENV || "not set",
+      },
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   // Serve service worker with no-cache headers so browsers always pick up the latest version
   app.get('/sw.js', (_req, res, next) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -230,7 +242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Send OTP via email
-      const { sendEmail } = await import('./emailService');
+      const { sendEmail } = await import('./emailService.js');
       const emailHtml = `
         <!DOCTYPE html>
         <html>
@@ -608,7 +620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(featuredSalons);
     } catch (error) {
       console.error("Error fetching featured salons:", error);
-      res.status(500).json({ message: "Failed to fetch featured salons" });
+      res.json([]);
     }
   });
 
@@ -1149,7 +1161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Background: auto-generate slots for all staff now that hours are set
       setImmediate(async () => {
         try {
-          const { autoGenerateSlotsForSalon } = await import('./slot-auto-generator');
+          const { autoGenerateSlotsForSalon } = await import('./slot-auto-generator.js');
           const result = await autoGenerateSlotsForSalon(db, salonId);
           if (result.slotsCreated > 0) {
             console.log(`[SlotGen] Auto-generated ${result.slotsCreated} slots for ${result.staffCount} staff after working hours update (salon ${salonId})`);
@@ -1399,7 +1411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/notifications/test-push', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.id;
-      const { sendPushToUser } = await import('./notifications');
+      const { sendPushToUser } = await import('./notifications.js');
       await sendPushToUser(userId, {
         title: '🔔 Sanwar Test Push',
         body: 'Push notifications are working! You\'ll receive booking alerts here.',
@@ -2090,7 +2102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         // Real-time in-app + push notifications
-        import('./notifications').then(({ notifyCustomerBookingRequested, notifyOwnerNewBooking }) => {
+        import('./notifications.js').then(({ notifyCustomerBookingRequested, notifyOwnerNewBooking }) => {
           notifyCustomerBookingRequested(booking.id).catch(() => {});
           notifyOwnerNewBooking(booking.id).catch(() => {});
         }).catch(() => {});
@@ -2542,7 +2554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send booking confirmation emails to both customer and shopkeeper (async)
       setImmediate(async () => {
         try {
-          const { sendBookingNotificationEmails } = await import('./booking-notifications');
+          const { sendBookingNotificationEmails } = await import('./booking-notifications.js');
           const emailResults = await sendBookingNotificationEmails(primaryBooking?.id || createdBookings[0]?.id);
           console.log(`📧 Booking emails sent - Customer: ${emailResults.customerSent}, Shopkeeper: ${emailResults.shopkeeperSent}`);
         } catch (emailError) {
@@ -2741,7 +2753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send booking confirmation emails to both customer and shopkeeper (async)
       setImmediate(async () => {
         try {
-          const { sendBookingNotificationEmails } = await import('./booking-notifications');
+          const { sendBookingNotificationEmails } = await import('./booking-notifications.js');
           const emailResults = await sendBookingNotificationEmails(booking.id);
           console.log(`📧 Cashfree booking emails sent - Customer: ${emailResults.customerSent}, Shopkeeper: ${emailResults.shopkeeperSent}`);
 
@@ -3940,7 +3952,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Background: auto-generate slots for the new staff member
       setImmediate(async () => {
         try {
-          const { autoGenerateSlotsForStaff } = await import('./slot-auto-generator');
+          const { autoGenerateSlotsForStaff } = await import('./slot-auto-generator.js');
           const count = await autoGenerateSlotsForStaff(db, salonId, staffMember.id);
           if (count > 0) console.log(`[SlotGen] Auto-generated ${count} slots for new staff ${staffMember.name}`);
         } catch (e) {
@@ -4131,7 +4143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send cancellation notification
       try {
-        const { sendBookingCancellationNotification } = await import('./notifications');
+        const { sendBookingCancellationNotification } = await import('./notifications.js');
         const notificationSent = await sendBookingCancellationNotification(bookingId);
         if (notificationSent) {
           console.log(`Booking cancellation email sent successfully for booking ${bookingId}`);
@@ -4862,7 +4874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const salonIdForSlots = req.params.salonId;
       setImmediate(async () => {
         try {
-          const { autoGenerateSlotsForSalon } = await import('./slot-auto-generator');
+          const { autoGenerateSlotsForSalon } = await import('./slot-auto-generator.js');
           const result = await autoGenerateSlotsForSalon(db, salonIdForSlots);
           if (result.slotsCreated > 0) {
             console.log(`[SlotGen] Auto-generated ${result.slotsCreated} slots for ${result.staffCount} staff (salon ${salonIdForSlots})`);
@@ -5318,7 +5330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If ALL staff have 0 slots, trigger auto-generation in the background
       const totalSlots = Object.values(slotCounts).reduce((s, v) => s + v, 0);
       if (totalSlots === 0 && staffMembers.length > 0) {
-        const { autoGenerateSlotsForSalon } = await import('./slot-auto-generator');
+        const { autoGenerateSlotsForSalon } = await import('./slot-auto-generator.js');
         autoGenerateSlotsForSalon(db, salonId).then(r => {
           if (r.slotsCreated > 0) {
             console.log(`[SlotGen] On-demand generated ${r.slotsCreated} slots for salon ${salonId}`);
@@ -5811,7 +5823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Booking status updated" });
 
       // Send email + in-app + push notifications to customer (async, non-blocking)
-      import('./booking-notifications').then(({ sendOwnerConfirmedEmail, sendOwnerDeclinedEmail, sendOwnerSuggestionEmail }) => {
+      import('./booking-notifications.js').then(({ sendOwnerConfirmedEmail, sendOwnerDeclinedEmail, sendOwnerSuggestionEmail }) => {
         if (status === 'confirmed') {
           sendOwnerConfirmedEmail(req.params.id).then(sent => console.log(`📧 Confirmed email: ${sent}`));
         } else if (status === 'cancelled') {
@@ -5824,7 +5836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).catch(e => console.error('Email notification error:', e));
 
       // In-app + push notifications
-      import('./notifications').then(({ notifyCustomerBookingAccepted, notifyCustomerBookingRejected, notifyCustomerRescheduleSuggested }) => {
+      import('./notifications.js').then(({ notifyCustomerBookingAccepted, notifyCustomerBookingRejected, notifyCustomerRescheduleSuggested }) => {
         if (status === 'confirmed') {
           notifyCustomerBookingAccepted(req.params.id).catch(() => {});
         } else if (status === 'cancelled') {
@@ -5859,8 +5871,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         await storage.updateBookingStatus(req.params.id, "confirmed", undefined, undefined, null as any, null as any, null as any);
         // Also apply suggested date/time as the new appointment
-        const { db } = await import("./db");
-        const { bookings: bookingsTable } = await import("../shared/schema");
+        const { db } = await import("./db.js");
+        const { bookings: bookingsTable } = await import("../shared/schema.js");
         const { eq } = await import("drizzle-orm");
         await db.update(bookingsTable).set({
           date: booking.suggestedDate ?? booking.date,
@@ -8117,7 +8129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success, message: success ? "Welcome email sent" : "Welcome email failed" });
       } else if (type === 'booking') {
         // Test booking confirmation email using email service directly
-        const { sendEmail } = await import('./emailService');
+        const { sendEmail } = await import('./emailService.js');
         const success = await sendEmail({
           to,
           subject: subject || "🎉 Test Booking Confirmation",
@@ -8137,7 +8149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success, message: success ? "Booking test email sent" : "Booking test email failed" });
       } else {
         // Simple test email
-        const { sendEmail } = await import('./emailService');
+        const { sendEmail } = await import('./emailService.js');
         const success = await sendEmail({
           to,
           subject,
@@ -8179,7 +8191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         // Test direct email system
-        const { sendBookingNotificationEmails } = await import('./booking-notifications');
+        const { sendBookingNotificationEmails } = await import('./booking-notifications.js');
         const emailResult = await sendBookingNotificationEmails(bookingId);
         results.push({ system: 'direct_email', success: emailResult.customerSent || emailResult.shopkeeperSent, result: emailResult });
       } catch (error) {
@@ -10760,7 +10772,7 @@ Crawl-delay: 1
         return res.status(400).json({ message: "Email and firstName are required" });
       }
 
-      const { sendWelcomeEmail } = await import('./welcomeEmail');
+      const { sendWelcomeEmail } = await import('./welcomeEmail.js');
       const success = await sendWelcomeEmail(email, firstName, 'customer');
       
       if (success) {
@@ -10810,7 +10822,7 @@ Crawl-delay: 1
         return res.status(400).json({ message: "Email address required" });
       }
       
-      const { sendEmail } = await import('./emailService');
+      const { sendEmail } = await import('./emailService.js');
       
       const testHtml = `
         <!DOCTYPE html>
@@ -12105,7 +12117,7 @@ Crawl-delay: 1
   });
 
   // Register smart scheduling routes
-  const { registerSmartSchedulingRoutes } = await import('./smart-scheduling-routes');
+  const { registerSmartSchedulingRoutes } = await import('./smart-scheduling-routes.js');
   registerSmartSchedulingRoutes(app);
 
   return httpServer;

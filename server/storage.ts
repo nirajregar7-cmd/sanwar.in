@@ -92,7 +92,7 @@ import {
   // Smart scheduling types
   // Staff service management types are available from the schema
 } from "@shared/schema";
-import { db } from "./db";
+import { db } from "./db.js";
 import { eq, and, gte, desc, asc, or, isNull, sql } from "drizzle-orm";
 
 export interface IStorage {

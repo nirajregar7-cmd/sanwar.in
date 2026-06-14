@@ -1,7 +1,7 @@
 import { File } from "@google-cloud/storage";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import { staff } from "../shared/schema";
+import { staff } from "../shared/schema.js";
 import { eq } from "drizzle-orm";
 
 const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
