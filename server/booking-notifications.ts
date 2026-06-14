@@ -1,7 +1,7 @@
-import { storage } from "./storage";
-import { bookings, salons, services, users } from '../shared/schema';
+import { storage } from "./storage.js";
+import { bookings, salons, services, users } from '../shared/schema.js';
 import { eq } from 'drizzle-orm';
-import { sendEmail } from './emailService';
+import { sendEmail } from './emailService.js';
 
 export interface BookingEmailData {
   bookingId: string;

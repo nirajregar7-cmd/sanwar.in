@@ -4,9 +4,9 @@ import { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { storage } from "./storage";
+import { storage } from "./storage.js";
 import { User as SelectUser, users as users_table, referrals, customerReferralCampaigns, freeBookingCredits } from "@shared/schema";
-import { db } from "./db";
+import { db } from "./db.js";
 import { eq, sql, and } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
 import pg from "pg";
@@ -37,7 +37,7 @@ sessionPool.on("error", (err) => {
   console.error("[SessionPool] Unexpected pool error:", err.message);
 });
 
-import { sendWelcomeEmail } from "./welcomeEmail";
+import { sendWelcomeEmail } from "./welcomeEmail.js";
 
 declare global {
   namespace Express {
@@ -364,7 +364,8 @@ export async function setupAuth(app: Express) {
 
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) {
-        return next(err);
+        console.error("Login authentication error:", err);
+        return res.status(503).json({ error: "Authentication service temporarily unavailable" });
       }
       if (!user) {
         return res.status(401).json({ error: info?.message || "Login failed" });

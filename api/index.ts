@@ -1,6 +1,6 @@
 // Vercel serverless function entry point
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "../server/routes";
+import { registerRoutes } from "../server/routes.js";
 
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -35,25 +35,6 @@ function validateEnv() {
   console.log("[Startup] Environment OK — DB:", !!(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL), "| SESSION_SECRET:", !!process.env.SESSION_SECRET, "| NODE_ENV:", process.env.NODE_ENV);
 }
 
-// Initialize routes once and reuse across warm invocations
-let initError: Error | null = null;
-const appReady: Promise<void> = (async () => {
-  try {
-    validateEnv();
-    await registerRoutes(app);
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      console.error("Server error:", err);
-      res.status(status).json({ message });
-    });
-    console.log("[Startup] Routes registered successfully");
-  } catch (err: any) {
-    initError = err;
-    console.error("[FATAL] App initialization failed:", err?.message, err?.stack);
-  }
-})();
-
 // Health check endpoint — useful for debugging Vercel deployment issues
 app.get("/api/healthz", async (_req: Request, res: Response) => {
   try {
@@ -62,7 +43,7 @@ app.get("/api/healthz", async (_req: Request, res: Response) => {
     let dbOk = false;
     let dbError = "";
     try {
-      const { pool } = await import("../server/db");
+      const { pool } = await import("../server/db.js");
 
       const client = await pool.connect();
       await client.query("SELECT 1");
@@ -86,6 +67,25 @@ app.get("/api/healthz", async (_req: Request, res: Response) => {
     res.status(500).json({ status: "error", message: err.message });
   }
 });
+
+// Initialize routes once and reuse across warm invocations
+let initError: Error | null = null;
+const appReady: Promise<void> = (async () => {
+  try {
+    validateEnv();
+    await registerRoutes(app);
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      console.error("Server error:", err);
+      res.status(status).json({ message });
+    });
+    console.log("[Startup] Routes registered successfully");
+  } catch (err: any) {
+    initError = err;
+    console.error("[FATAL] App initialization failed:", err?.message, err?.stack);
+  }
+})();
 
 export default async function handler(req: Request, res: Response) {
   await appReady;

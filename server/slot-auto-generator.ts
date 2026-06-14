@@ -11,7 +11,7 @@
  */
 
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
-import { workingHours, staff, timeSlots, salons } from '../shared/schema';
+import { workingHours, staff, timeSlots, salons } from '../shared/schema.js';
 
 const SLOT_DURATION_MINUTES = 30;
 const DAYS_AHEAD = 30;
@@ -195,7 +195,7 @@ export async function autoGenerateSlotsForSalon(
  */
 export async function runDailySlotMaintenance(): Promise<void> {
   try {
-    const { storage } = await import('./storage');
+    const { storage } = await import('./storage.js');
     const db = (storage as any).db;
 
     const allSalons = await db

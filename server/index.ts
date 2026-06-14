@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import path from "path";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { registerRoutes } from "./routes.js";
+import { setupVite, serveStatic, log } from "./vite.js";
 
 const app = express();
 // Increase limit for AI virtual try-on image uploads (base64 encoded images can be large)
@@ -76,8 +76,8 @@ app.use((req, res, next) => {
     
     // Backfill missing slugs for existing salons (one-time migration)
     try {
-      const { db } = await import('./db');
-      const { salons } = await import('../shared/schema');
+      const { db } = await import('./db.js');
+      const { salons } = await import('../shared/schema.js');
       const { isNull, eq } = await import('drizzle-orm');
       const missingSlugs = await db.select({ id: salons.id, name: salons.name })
         .from(salons)
@@ -107,7 +107,7 @@ app.use((req, res, next) => {
 
     // Start the booking notification scheduler
     try {
-      const { startBookingScheduler } = await import('./booking-scheduler');
+      const { startBookingScheduler } = await import('./booking-scheduler.js');
       startBookingScheduler();
     } catch (schedulerError) {
       console.error('❌ Error starting booking scheduler:', schedulerError);
