@@ -6,4 +6,3 @@ vite.config.ts.*
 *.tar.gz
 server/routes.js
 server/*.js.map
-api/index.js
