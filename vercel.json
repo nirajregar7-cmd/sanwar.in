@@ -6,12 +6,6 @@
     { "source": "/api/:path*", "destination": "/api" },
     { "source": "/((?!api).*)", "destination": "/index.html" }
   ],
-  "functions": {
-    "api/index.ts": {
-      "maxDuration": 30,
-      "includeFiles": "server/**,shared/**"
-    }
-  },
   "env": {
     "NODE_ENV": "production"
   }
