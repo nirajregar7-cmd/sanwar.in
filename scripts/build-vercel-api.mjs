@@ -1,33 +1,28 @@
 import * as esbuild from "esbuild";
-import { execSync } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 
-// Step 1: Build the frontend
-console.log("Building frontend...");
-execSync("npx vite build", { stdio: "inherit", cwd: root });
+console.log("Building Vercel API bundle...");
 
-// Step 2: Bundle the API entry point into a plain JS file.
-// Using --packages=external so npm packages stay as external imports
-// and Vercel includes them from node_modules at runtime.
-// The @shared alias is resolved here so Vercel never sees TypeScript.
-console.log("Building API bundle...");
 await esbuild.build({
   entryPoints: [path.join(root, "server/vercel-entry.ts")],
   bundle: true,
   platform: "node",
   target: "node20",
+  // Keep ALL npm packages external — Vercel includes them from node_modules at runtime.
+  // Only our own TypeScript source files get compiled and bundled.
   packages: "external",
   format: "esm",
   outfile: path.join(root, "api/index.js"),
   tsconfig: path.join(root, "tsconfig.json"),
+  // Resolve @shared alias to the actual directory
   alias: {
     "@shared": path.join(root, "shared"),
   },
   logLevel: "info",
 });
 
-console.log("✓ Build complete — api/index.js ready for Vercel");
+console.log("✓ api/index.js built successfully");
