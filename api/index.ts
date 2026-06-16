@@ -45,15 +45,29 @@ const appReady: Promise<void> = (async () => {
 
 app.get("/api/healthz", async (_req: Request, res: Response) => {
   await appReady;
+
+  // Run a live DB check
+  let dbTest: { ok: boolean; error?: string; tables?: string[] } = { ok: false };
+  try {
+    const { pool } = await import("../server/db");
+    const result = await pool.query(
+      "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name LIMIT 10"
+    );
+    dbTest = { ok: true, tables: result.rows.map((r: any) => r.table_name) };
+  } catch (e: any) {
+    dbTest = { ok: false, error: e?.message };
+  }
+
   res.json({
     status: initError ? "error" : "ok",
     error: initError?.message,
     env: {
-      database_url: !!(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL),
-      session_secret: !!process.env.SESSION_SECRET,
+      database_url_set: !!(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL),
+      session_secret_set: !!process.env.SESSION_SECRET,
       node_env: process.env.NODE_ENV,
     },
-    ts: new Date().toISOString(),
+    db: dbTest,
+    timestamp: new Date().toISOString(),
   });
 });
 
