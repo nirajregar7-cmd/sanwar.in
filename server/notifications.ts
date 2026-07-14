@@ -361,7 +361,7 @@ async function logNotification(data: {
       sentAt: new Date()
     });
   } catch (error) {
-    console.error('Error logging notification:', error);
+    console.error(`Error logging notification (channel=${data.channel}, type=${data.type}, user=${data.userId}):`, error);
   }
 }
 
@@ -387,7 +387,8 @@ export async function logInAppNotification(data: {
       sentAt: new Date(),
     });
   } catch (error) {
-    console.error('Error logging in-app notification:', error);
+    console.error(`Error logging in-app notification (type=${data.type}, user=${data.userId}):`, error);
+    throw error;
   }
 }
 
@@ -813,7 +814,8 @@ export async function sendPushToUser(userId: string, payload: {
       }
     }
   } catch (error) {
-    console.error('Error sending push to user:', error);
+    console.error(`Error sending push to user ${userId}:`, error);
+    throw error;
   }
 }
 
@@ -1053,5 +1055,6 @@ export async function notifyFollowersNewOffer(offerId: string, salonId: string) 
     console.log(`[Followers] Notified ${customerIds.length} followers of new offer at ${salon.name}`);
   } catch (error) {
     console.error('[Followers] Error notifying followers of new offer:', error);
+    throw error;
   }
 }

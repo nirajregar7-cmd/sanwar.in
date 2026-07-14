@@ -267,7 +267,7 @@ export class SmartSchedulingService {
       return true;
     } catch (error) {
       console.error('Error booking service slots:', error);
-      return false;
+      throw error;
     }
   }
 
@@ -290,7 +290,7 @@ export class SmartSchedulingService {
       return true;
     } catch (error) {
       console.error('Error cancelling booking slots:', error);
-      return false;
+      throw error;
     }
   }
 
@@ -360,7 +360,7 @@ export class SmartSchedulingService {
       return true;
     } catch (error) {
       console.error('Error copying schedule:', error);
-      return false;
+      throw error;
     }
   }
 
@@ -394,7 +394,7 @@ export class SmartSchedulingService {
       return true;
     } catch (error) {
       console.error('Error adding bulk breaks:', error);
-      return false;
+      throw error;
     }
   }
 

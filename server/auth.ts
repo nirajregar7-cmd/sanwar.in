@@ -137,6 +137,7 @@ async function processReferralRewards(referralRecord: any, newUser: any) {
     }
   } catch (error) {
     console.error("Error processing referral rewards:", error);
+    throw error;
   }
 }
 
@@ -167,8 +168,7 @@ async function ensureSessionTable() {
       CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
     `);
   } catch (err) {
-    // Log but don't crash — table likely already exists
-    console.log('Session table check complete (may already exist)');
+    console.error('Failed to ensure session table exists:', err);
   }
 }
 
@@ -312,9 +312,13 @@ export async function setupAuth(app: Express) {
           referredId: user.id,
         }).where(eq(referrals.id, referralRecord.id));
 
-        // Process referral rewards based on type
-        await processReferralRewards(referralRecord, user);
-        console.log(`✅ Referral processed: ${referralRecord.referralType} for user ${user.firstName}`);
+        // Process referral rewards based on type (non-blocking for registration)
+        try {
+          await processReferralRewards(referralRecord, user);
+          console.log(`Referral processed: ${referralRecord.referralType} for user ${user.firstName}`);
+        } catch (rewardError) {
+          console.error(`Referral reward processing failed for user ${user.id}, referral ${referralRecord.id}:`, rewardError);
+        }
       }
 
       // Set 15-day trial for salon owners and brand owners
