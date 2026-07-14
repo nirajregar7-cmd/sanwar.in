@@ -1,3 +1,5 @@
+import { randomInt } from 'crypto';
+
 export interface WhatsAppMessage {
   to: string;
   body: string;
@@ -8,7 +10,7 @@ export async function sendWhatsAppMessage(_msg: WhatsAppMessage): Promise<boolea
 }
 
 export function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 999999).toString();
 }
 
 export async function sendPasswordResetOTP(_phone: string, _otp: string): Promise<boolean> {
