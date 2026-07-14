@@ -59,6 +59,7 @@ import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { BrandOffer } from "@shared/schema";
+import { formatCurrency, formatDateShort } from "@/lib/formatters";
 
 interface BrandSalon {
   id: string;
@@ -380,7 +381,7 @@ export default function BrandDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Earnings</p>
-                  <p className="text-lg sm:text-2xl font-bold">₹{brandStats.totalEarnings.toLocaleString()}</p>
+                  <p className="text-lg sm:text-2xl font-bold">{formatCurrency(brandStats.totalEarnings)}</p>
                   <p className="text-xs text-gray-500">All time</p>
                 </div>
                 <IndianRupee className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-600" />
@@ -492,7 +493,7 @@ export default function BrandDashboard() {
                       <div className="flex justify-between text-xs sm:text-sm">
                         <span>Monthly Earnings:</span>
                         <span className="font-semibold text-green-600">
-                          ₹{salon.monthlyEarnings.toLocaleString()}
+                          {formatCurrency(salon.monthlyEarnings)}
                         </span>
                       </div>
                     </div>
@@ -632,7 +633,7 @@ export default function BrandDashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="text-right">
-                            <p className="font-semibold">₹{salon.monthlyEarnings.toLocaleString()}</p>
+                            <p className="font-semibold">{formatCurrency(salon.monthlyEarnings)}</p>
                             <div className="flex items-center text-sm text-gray-600">
                               <Star className="h-3 w-3 text-yellow-500 mr-1" />
                               {salon.averageRating}
@@ -682,7 +683,7 @@ export default function BrandDashboard() {
                     <div key={salon.id} className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>{salon.name}</span>
-                        <span>₹{salon.monthlyEarnings.toLocaleString()}</span>
+                        <span>{formatCurrency(salon.monthlyEarnings)}</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
@@ -735,7 +736,7 @@ export default function BrandDashboard() {
                       </div>
                       <div className="text-right">
                         <p className="font-semibold">{service.bookingCount} bookings</p>
-                        <p className="text-sm text-green-600">₹{service.revenue.toLocaleString()}</p>
+                        <p className="text-sm text-green-600">{formatCurrency(service.revenue)}</p>
                       </div>
                     </div>
                   ))}
@@ -912,7 +913,7 @@ export default function BrandDashboard() {
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <IndianRupee className="h-8 w-8 mx-auto text-green-600 mb-2" />
-                      <p className="text-2xl font-bold">₹{selectedSalonDetails.totalEarnings.toLocaleString()}</p>
+                      <p className="text-2xl font-bold">{formatCurrency(selectedSalonDetails.totalEarnings)}</p>
                       <p className="text-sm text-gray-600">Total Earnings</p>
                     </div>
                   </CardContent>
@@ -922,7 +923,7 @@ export default function BrandDashboard() {
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <TrendingUp className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-                      <p className="text-2xl font-bold">₹{selectedSalonDetails.monthlyEarnings.toLocaleString()}</p>
+                      <p className="text-2xl font-bold">{formatCurrency(selectedSalonDetails.monthlyEarnings)}</p>
                       <p className="text-sm text-gray-600">Monthly Earnings</p>
                     </div>
                   </CardContent>
@@ -981,11 +982,11 @@ export default function BrandDashboard() {
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span>Revenue Share (Brand)</span>
-                        <span className="font-semibold text-green-600">₹{(selectedSalonDetails.monthlyEarnings * 0.45).toLocaleString()}</span>
+                        <span className="font-semibold text-green-600">{formatCurrency(selectedSalonDetails.monthlyEarnings * 0.45)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Revenue Share (Salon)</span>
-                        <span className="font-semibold">₹{(selectedSalonDetails.monthlyEarnings * 0.55).toLocaleString()}</span>
+                        <span className="font-semibold">{formatCurrency(selectedSalonDetails.monthlyEarnings * 0.55)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Premium Status</span>
@@ -1239,7 +1240,7 @@ function ConnectionsManagement({ userId }: { userId?: string }) {
                     </div>
                     <p className="text-sm text-gray-700 mb-2">{invitation.message}</p>
                     <p className="text-xs text-gray-500">
-                      Sent: {new Date(invitation.createdAt).toLocaleDateString()}
+                      Sent: {formatDateShort(invitation.createdAt)}
                     </p>
                   </div>
                 ))}
@@ -1293,7 +1294,7 @@ function ConnectionsManagement({ userId }: { userId?: string }) {
                       </div>
                       <p className="text-sm text-gray-700 mb-3">{invitation.message}</p>
                       <p className="text-xs text-gray-500 mb-3">
-                        Requested: {new Date(invitation.createdAt).toLocaleDateString()}
+                        Requested: {formatDateShort(invitation.createdAt)}
                       </p>
                       
                       {invitation.status === 'pending' && (

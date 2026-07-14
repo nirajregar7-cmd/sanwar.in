@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatDateShort } from "@/lib/formatters";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -296,7 +297,7 @@ export default function UserManagement() {
                         )}
                         <div className="flex items-center text-gray-600 dark:text-gray-400">
                           <Calendar className="h-4 w-4 mr-2" />
-                          <span>Joined {new Date(user.createdAt).toLocaleDateString()}</span>
+                          <span>Joined {formatDateShort(user.createdAt)}</span>
                         </div>
                       </div>
                     </div>
@@ -346,7 +347,7 @@ export default function UserManagement() {
                               <div>
                                 <label className="text-sm font-medium">Member Since</label>
                                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                                  {new Date(user.createdAt).toLocaleDateString()}
+                                  {formatDateShort(user.createdAt)}
                                 </p>
                               </div>
                             </div>

@@ -36,6 +36,7 @@ import { SalonChatDialog } from "@/components/SalonChatDialog";
 import { CustomerSalonMap } from "@/components/CustomerSalonMap";
 import { EmergencyBookingBanner } from "@/components/EmergencyBookingBanner";
 import { ServiceSpecificOffers } from "@/components/ServiceSpecificOffers";
+import { formatTimeOfDay } from "@/lib/formatters";
 
 const bookingSchema = z.object({
   serviceIds: z.array(z.string()).min(1, "Please select at least one service"),
@@ -318,18 +319,9 @@ export default function SalonDetail() {
         };
       }
       
-      const formatTime = (time: string) => {
-        if (!time) return '';
-        const [hours, minutes] = time.split(':');
-        const hour = parseInt(hours);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-        return `${displayHour}:${minutes} ${ampm}`;
-      };
-      
       let hoursText = '';
       if (daySchedule.openTime && daySchedule.closeTime) {
-        hoursText = `${formatTime(daySchedule.openTime)} - ${formatTime(daySchedule.closeTime)}`;
+        hoursText = `${formatTimeOfDay(daySchedule.openTime)} - ${formatTimeOfDay(daySchedule.closeTime)}`;
       }
       
       return {

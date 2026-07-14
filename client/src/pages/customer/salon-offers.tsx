@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { formatDateShort } from "@/lib/formatters";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -250,7 +251,7 @@ export default function SalonOffersPage() {
                     <div className="flex items-center gap-2 text-sm">
                       <Calendar className="w-4 h-4 text-green-600" />
                       <span data-testid={`text-offer-validity-${offer.id}`}>
-                        Valid till {new Date(offer.validUntil).toLocaleDateString()}
+                        Valid till {formatDateShort(offer.validUntil)}
                       </span>
                     </div>
 

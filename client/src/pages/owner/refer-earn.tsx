@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { formatDateShort } from "@/lib/formatters";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -322,7 +323,7 @@ export default function ShopkeeperReferEarn() {
                         <p className="text-sm text-gray-500">{referral.referredCustomerPhone}</p>
                         {referral.completedAt && (
                           <p className="text-xs text-gray-400">
-                            Completed: {new Date(referral.completedAt).toLocaleDateString()}
+                            Completed: {formatDateShort(referral.completedAt)}
                           </p>
                         )}
                       </div>

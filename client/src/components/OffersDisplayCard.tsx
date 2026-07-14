@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Users, IndianRupee, Percent, Tag } from "lucide-react";
+import { formatDateShort } from "@/lib/formatters";
 
 interface Offer {
   id: string;
@@ -72,7 +73,7 @@ export default function OffersDisplayCard({ offer, className = "" }: OffersDispl
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calendar className="w-4 h-4" />
             <span data-testid={`text-offer-validity-${offer.id}`}>
-              Valid till {new Date(offer.validUntil).toLocaleDateString()}
+              Valid till {formatDateShort(offer.validUntil)}
             </span>
           </div>
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { formatDateShort } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -215,7 +216,7 @@ export default function FeedbackHelp() {
                           <span>{item.rating}/5</span>
                         </div>
                       )}
-                      <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                      <span>{formatDateShort(item.createdAt)}</span>
                     </div>
                   </div>
                   
@@ -275,8 +276,8 @@ export default function FeedbackHelp() {
                   </div>
                   
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Created: {new Date(ticket.createdAt).toLocaleDateString()}</span>
-                    <span>Updated: {new Date(ticket.updatedAt).toLocaleDateString()}</span>
+                    <span>Created: {formatDateShort(ticket.createdAt)}</span>
+                    <span>Updated: {formatDateShort(ticket.updatedAt)}</span>
                   </div>
                   
                   {ticket.status === "waiting_customer" && (
